@@ -128,7 +128,7 @@
 <body>
     <h1>ZOMBIE APOCALYPSE: INFECTION</h1>
     <div class="subtitle">One zombie. It infects everyone. Survive the big city.</div>
-    <div class="controls-hint">Desktop: WASD + Click | Mobile: Left stick to move, tap right to shoot, walk over blue crates for ammo</div>
+    <div class="controls-hint">Desktop: WASD + Click + Q=Ability | Mobile: Left stick to move, tap right to shoot, Q button for ability</div>
 
     <div id="game-container">
         <canvas id="gameCanvas" width="960" height="580"></canvas>
@@ -156,63 +156,63 @@
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev0" width="36" height="50"></canvas>
-                    <span>Commando</span>
+                    <span>Commando<br><small style="color:#aa88ff">Rapid Fire</small></span>
                 </div>
                 <button id="btn-skin0" onclick="buySkin(0)">$15</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev1" width="36" height="50"></canvas>
-                    <span>Hazard</span>
+                    <span>Hazard<br><small style="color:#aa88ff">Toxic Cloud</small></span>
                 </div>
                 <button id="btn-skin1" onclick="buySkin(1)">$25</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev2" width="36" height="50"></canvas>
-                    <span>Cyber</span>
+                    <span>Cyber<br><small style="color:#aa88ff">EMP Blast</small></span>
                 </div>
                 <button id="btn-skin2" onclick="buySkin(2)">$40</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev3" width="36" height="50"></canvas>
-                    <span>Inferno</span>
+                    <span>Inferno<br><small style="color:#aa88ff">Fire Trail</small></span>
                 </div>
                 <button id="btn-skin3" onclick="buySkin(3)">$60</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev4" width="36" height="50"></canvas>
-                    <span>Frost</span>
+                    <span>Frost<br><small style="color:#aa88ff">Freeze Blast</small></span>
                 </div>
                 <button id="btn-skin4" onclick="buySkin(4)">$80</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev5" width="36" height="50"></canvas>
-                    <span>Medic</span>
+                    <span>Medic<br><small style="color:#aa88ff">Heal Aura</small></span>
                 </div>
                 <button id="btn-skin5" onclick="buySkin(5)">$50</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev6" width="36" height="50"></canvas>
-                    <span>Ninja</span>
+                    <span>Ninja<br><small style="color:#aa88ff">Vanish</small></span>
                 </div>
                 <button id="btn-skin6" onclick="buySkin(6)">$100</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev7" width="36" height="50"></canvas>
-                    <span>Gold</span>
+                    <span>Gold<br><small style="color:#aa88ff">Coin Magnet</small></span>
                 </div>
                 <button id="btn-skin7" onclick="buySkin(7)">$120</button>
             </div>
             <div class="shop-item">
                 <div class="shop-item-info">
                     <canvas class="skin-preview-canvas" id="skinprev8" width="36" height="50"></canvas>
-                    <span>Shadow</span>
+                    <span>Shadow<br><small style="color:#aa88ff">Dark Pulse</small></span>
                 </div>
                 <button id="btn-skin8" onclick="buySkin(8)">$150</button>
             </div>
@@ -245,16 +245,26 @@ let camX = 0, camY = 0;
 
 // ── Skins ──────────────────────────────────────────
 const SKINS = [
-    { name:'Commando', cost:15, shirt:'#2d6b3f', pants:'#3a3a2a', skin:'#e8b88a', hair:'#2a1a0a', hat:'#4a6b3a', glow:'rgba(51,255,136,0.3)', accent:'#5a8a4a' },
-    { name:'Hazard',   cost:25, shirt:'#ff6600', pants:'#333', skin:'#d4a574', hair:'#1a1a1a', hat:'#ffcc00', glow:'rgba(255,136,51,0.3)', accent:'#cc4400' },
-    { name:'Cyber',    cost:40, shirt:'#7733cc', pants:'#1a1a2e', skin:'#c8a8e0', hair:'#cc44ff', hat:null, glow:'rgba(204,68,255,0.4)', accent:'#aa55ff' },
-    { name:'Inferno',  cost:60, shirt:'#cc2200', pants:'#1a0a00', skin:'#e8b88a', hair:'#ff4400', hat:null, glow:'rgba(255,68,0,0.5)', accent:'#ff6600' },
-    { name:'Frost',    cost:80, shirt:'#0088cc', pants:'#1a2a3a', skin:'#d0e8ff', hair:'#aaddff', hat:'#00aaee', glow:'rgba(0,200,255,0.5)', accent:'#00ccff' },
-    { name:'Medic',    cost:50, shirt:'#ffffff', pants:'#2a3a5a', skin:'#e8c8a0', hair:'#3a2010', hat:'#ffffff', glow:'rgba(255,80,80,0.3)', accent:'#dd3333' },
-    { name:'Ninja',    cost:100, shirt:'#1a1a1a', pants:'#0a0a0a', skin:'#c49a6c', hair:'#0a0a0a', hat:null, glow:'rgba(160,80,255,0.4)', accent:'#8833cc' },
-    { name:'Gold',     cost:120, shirt:'#ccaa00', pants:'#8a7000', skin:'#e8c88a', hair:'#ddb833', hat:'#ffcc00', glow:'rgba(255,215,0,0.5)', accent:'#ffdd44' },
-    { name:'Shadow',   cost:150, shirt:'#151515', pants:'#0a0a0a', skin:'#3a3a3a', hair:'#111111', hat:null, glow:'rgba(200,200,255,0.2)', accent:'#333344' },
+    { name:'Commando', cost:15, shirt:'#2d6b3f', pants:'#3a3a2a', skin:'#e8b88a', hair:'#2a1a0a', hat:'#4a6b3a', glow:'rgba(51,255,136,0.3)', accent:'#5a8a4a',
+      ability:{ name:'Rapid Fire', desc:'Triple shot burst', duration:240, cooldown:2100, type:'rapidfire' } },
+    { name:'Hazard',   cost:25, shirt:'#ff6600', pants:'#333', skin:'#d4a574', hair:'#1a1a1a', hat:'#ffcc00', glow:'rgba(255,136,51,0.3)', accent:'#cc4400',
+      ability:{ name:'Toxic Cloud', desc:'Poison nearby zombies', duration:300, cooldown:2400, type:'toxic' } },
+    { name:'Cyber',    cost:40, shirt:'#7733cc', pants:'#1a1a2e', skin:'#c8a8e0', hair:'#cc44ff', hat:null, glow:'rgba(204,68,255,0.4)', accent:'#aa55ff',
+      ability:{ name:'EMP Blast', desc:'Stun all visible zombies', duration:180, cooldown:2700, type:'emp' } },
+    { name:'Inferno',  cost:60, shirt:'#cc2200', pants:'#1a0a00', skin:'#e8b88a', hair:'#ff4400', hat:null, glow:'rgba(255,68,0,0.5)', accent:'#ff6600',
+      ability:{ name:'Fire Trail', desc:'Leave fire that burns zombies', duration:300, cooldown:2100, type:'firetrail' } },
+    { name:'Frost',    cost:80, shirt:'#0088cc', pants:'#1a2a3a', skin:'#d0e8ff', hair:'#aaddff', hat:'#00aaee', glow:'rgba(0,200,255,0.5)', accent:'#00ccff',
+      ability:{ name:'Freeze Blast', desc:'Freeze nearby zombies', duration:180, cooldown:2400, type:'freeze' } },
+    { name:'Medic',    cost:50, shirt:'#ffffff', pants:'#2a3a5a', skin:'#e8c8a0', hair:'#3a2010', hat:'#ffffff', glow:'rgba(255,80,80,0.3)', accent:'#dd3333',
+      ability:{ name:'Heal Aura', desc:'Full heal + shield', duration:1, cooldown:2700, type:'heal' } },
+    { name:'Ninja',    cost:100, shirt:'#1a1a1a', pants:'#0a0a0a', skin:'#c49a6c', hair:'#0a0a0a', hat:null, glow:'rgba(160,80,255,0.4)', accent:'#8833cc',
+      ability:{ name:'Vanish', desc:'Go invisible + speed boost', duration:240, cooldown:2100, type:'vanish' } },
+    { name:'Gold',     cost:120, shirt:'#ccaa00', pants:'#8a7000', skin:'#e8c88a', hair:'#ddb833', hat:'#ffcc00', glow:'rgba(255,215,0,0.5)', accent:'#ffdd44',
+      ability:{ name:'Coin Magnet', desc:'Pull all coins to you', duration:300, cooldown:1800, type:'magnet' } },
+    { name:'Shadow',   cost:150, shirt:'#151515', pants:'#0a0a0a', skin:'#3a3a3a', hair:'#111111', hat:null, glow:'rgba(200,200,255,0.2)', accent:'#333344',
+      ability:{ name:'Dark Pulse', desc:'Shockwave pushes + damages', duration:1, cooldown:2400, type:'darkpulse' } },
 ];
+const DEFAULT_ABILITY = { name:'Adrenaline', desc:'2x speed boost', duration:180, cooldown:1800, type:'adrenaline' };
 let activeSkin = -1, purchasedSkins = [];
 
 // ── Map generation ─────────────────────────────────
@@ -324,6 +334,10 @@ let player, bots, zombies, bullets, coins, particles, keys, gameActive;
 let score, kills, ammo, maxAmmo, frame, survivalTimer, totalSeconds;
 let totalCoinsGlobal = 0;
 let infectorMode = false, infectCount = 0;
+// Ability system
+let abilityCooldown = 0, abilityActive = false, abilityTimer = 0;
+let fireTrail = [], playerInvisible = false, playerBaseSpeed = 4;
+let darkPulseEffect = 0; // visual ring expansion
 
 function init() {
     player = { x: WORLD_W/2, y: WORLD_H/2, size: 16, speed: 4, hp: 100, maxHp: 100, angle: 0 };
@@ -331,6 +345,8 @@ function init() {
     keys = {}; score = 0; kills = 0; ammo = 30; maxAmmo = 30;
     frame = 0; survivalTimer = 0; totalSeconds = 0; gameActive = true;
     infectorMode = false; infectCount = 0;
+    abilityCooldown = 0; abilityActive = false; abilityTimer = 0;
+    fireTrail = []; playerInvisible = false; playerBaseSpeed = 4; darkPulseEffect = 0;
 
     // 20 survivor bots spread across the map
     const botNames = ['Alex','Sam','Pat','Jay','Riv','Kai','Ari','Sky','Val','Lee',
@@ -425,6 +441,7 @@ let ammoCrates = []; // ammo pickups on the map
 window.addEventListener('keydown', e => {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === 'r' && gameActive) { ammo = maxAmmo; updateUI(); }
+    if (e.key.toLowerCase() === 'q' && gameActive) { activateAbility(); }
 });
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
@@ -447,11 +464,16 @@ canvas.addEventListener('mousedown', e => {
 
 function fireBullet(angle) {
     if (ammo <= 0 || infectorMode) return;
-    bullets.push({
-        x: player.x + Math.cos(angle)*player.size,
-        y: player.y + Math.sin(angle)*player.size,
-        radius: 3, speed: 12, dx: Math.cos(angle), dy: Math.sin(angle),
-    });
+    let shots = (abilityActive && getAbility().type === 'rapidfire') ? 3 : 1;
+    let spread = 0.15; // angle spread for triple shot
+    for (let s = 0; s < shots; s++) {
+        let a = shots === 1 ? angle : angle + (s-1)*spread;
+        bullets.push({
+            x: player.x + Math.cos(a)*player.size,
+            y: player.y + Math.sin(a)*player.size,
+            radius: 3, speed: 12, dx: Math.cos(a), dy: Math.sin(a),
+        });
+    }
     ammo--;
     player.angle = angle;
     for (let p = 0; p < 4; p++) {
@@ -483,6 +505,10 @@ canvas.addEventListener('touchstart', e => {
             joystick.baseY = ty;
             joystick.dx = 0;
             joystick.dy = 0;
+        }
+        // Ability button check (left side, above joystick)
+        else if (tx > 88 && tx < 152 && ty > VH - 262 && ty < VH - 198) {
+            activateAbility();
         }
         // Reload button check (bottom right area)
         else if (tx > VW - 102 && tx < VW - 38 && ty > VH - 202 && ty < VH - 138) {
@@ -580,6 +606,113 @@ function updateShopButtons() {
 function getPC() {
     if (activeSkin >= 0) return SKINS[activeSkin];
     return { shirt:'#3366cc', pants:'#2a2a3a', skin:'#e8b88a', hair:'#3a2010', hat:null, glow:'rgba(51,153,255,0.3)', accent:'#4488dd' };
+}
+function getAbility() {
+    if (activeSkin >= 0) return SKINS[activeSkin].ability;
+    return DEFAULT_ABILITY;
+}
+function activateAbility() {
+    if (!gameActive || infectorMode || abilityCooldown > 0 || abilityActive) return;
+    let ab = getAbility();
+    abilityActive = true;
+    abilityTimer = ab.duration;
+    abilityCooldown = ab.cooldown;
+    switch(ab.type) {
+        case 'adrenaline':
+            player.speed = playerBaseSpeed * 2;
+            break;
+        case 'rapidfire':
+            // handled in fireBullet
+            break;
+        case 'toxic':
+            // spawns poison each frame in update
+            break;
+        case 'emp':
+            // stun all zombies on screen
+            for (let z of zombies) {
+                let sx = z.x - camX, sy = z.y - camY;
+                if (sx > -50 && sx < VW+50 && sy > -50 && sy < VH+50) {
+                    z.stunned = 180; // 3 seconds
+                }
+            }
+            // visual flash
+            for (let p=0;p<30;p++) particles.push({
+                x:player.x+(Math.random()-0.5)*VW, y:player.y+(Math.random()-0.5)*VH,
+                dx:0, dy:-1-Math.random()*2, life:20+Math.random()*15, maxLife:35,
+                color:'#cc44ff', size:3+Math.random()*4,
+            });
+            break;
+        case 'firetrail':
+            // spawns fire segments in update
+            break;
+        case 'freeze':
+            // freeze zombies in radius
+            for (let z of zombies) {
+                let d = Math.sqrt((z.x-player.x)**2+(z.y-player.y)**2);
+                if (d < 200) {
+                    z.frozen = 180; // 3 seconds
+                }
+            }
+            // ice burst particles
+            for (let p=0;p<25;p++) {
+                let ang = Math.random()*Math.PI*2;
+                particles.push({
+                    x:player.x, y:player.y,
+                    dx:Math.cos(ang)*(3+Math.random()*5), dy:Math.sin(ang)*(3+Math.random()*5),
+                    life:20+Math.random()*15, maxLife:35, color:'#88ddff', size:4+Math.random()*4,
+                });
+            }
+            break;
+        case 'heal':
+            player.hp = player.maxHp;
+            player.maxHp = 200; // temporary shield
+            player.hp = 200;
+            setTimeout(() => { if (player) { player.maxHp = 100; player.hp = Math.min(player.hp, 100); } }, 8000);
+            // heal particles
+            for (let p=0;p<20;p++) particles.push({
+                x:player.x+(Math.random()-0.5)*40, y:player.y+(Math.random()-0.5)*40,
+                dx:(Math.random()-0.5)*2, dy:-2-Math.random()*3,
+                life:25+Math.random()*15, maxLife:40, color:'#44ff88', size:4+Math.random()*3,
+            });
+            break;
+        case 'vanish':
+            playerInvisible = true;
+            player.speed = playerBaseSpeed * 1.5;
+            break;
+        case 'magnet':
+            // pull all coins + spawn bonus
+            for (let c of coins) { c.life = Math.max(c.life, 300); }
+            for (let i=0;i<10;i++) {
+                let cx = player.x+(Math.random()-0.5)*800, cy = player.y+(Math.random()-0.5)*600;
+                cx = Math.max(50, Math.min(WORLD_W-50, cx));
+                cy = Math.max(50, Math.min(WORLD_H-50, cy));
+                coins.push({ x:cx, y:cy, size:12, bob:Math.random()*Math.PI*2, life:600, value:2 });
+            }
+            break;
+        case 'darkpulse':
+            darkPulseEffect = 30;
+            for (let z of zombies) {
+                let dx = z.x-player.x, dy = z.y-player.y;
+                let d = Math.sqrt(dx*dx+dy*dy);
+                if (d < 250 && d > 0) {
+                    z.x += (dx/d)*80;
+                    z.y += (dy/d)*80;
+                    z.hp--;
+                    if (z.hp <= 0) { score += 15; kills++; }
+                }
+            }
+            zombies = zombies.filter(z => z.hp > 0);
+            // shockwave particles
+            for (let p=0;p<30;p++) {
+                let ang = Math.random()*Math.PI*2;
+                particles.push({
+                    x:player.x, y:player.y,
+                    dx:Math.cos(ang)*(5+Math.random()*8), dy:Math.sin(ang)*(5+Math.random()*8),
+                    life:15+Math.random()*10, maxLife:25, color:'#8888ff', size:4+Math.random()*5,
+                });
+            }
+            break;
+    }
 }
 
 // ── Cartoon character drawing functions ──────────
@@ -873,6 +1006,65 @@ function update() {
         document.getElementById('time-display').innerText = m+':'+(s<10?'0':'')+s;
     }
 
+    // Ability cooldown and active timer
+    if (abilityCooldown > 0) abilityCooldown--;
+    if (abilityActive) {
+        abilityTimer--;
+        let ab = getAbility();
+        // Per-frame effects
+        if (ab.type === 'toxic') {
+            // Damage nearby zombies
+            for (let z of zombies) {
+                let d = Math.sqrt((z.x-player.x)**2+(z.y-player.y)**2);
+                if (d < 150) {
+                    if (frame % 30 === 0) z.hp -= 0.5;
+                    if (frame % 10 === 0) particles.push({
+                        x:z.x+(Math.random()-0.5)*20, y:z.y+(Math.random()-0.5)*20,
+                        dx:(Math.random()-0.5)*2, dy:-1-Math.random()*2,
+                        life:15+Math.random()*10, maxLife:25, color:'#88ff00', size:3+Math.random()*3,
+                    });
+                }
+            }
+            // Toxic cloud around player
+            if (frame % 3 === 0) particles.push({
+                x:player.x+(Math.random()-0.5)*100, y:player.y+(Math.random()-0.5)*100,
+                dx:(Math.random()-0.5)*1.5, dy:-0.5-Math.random(),
+                life:20+Math.random()*15, maxLife:35, color:'rgba(100,255,0,0.6)', size:5+Math.random()*8,
+            });
+            zombies = zombies.filter(z => { if(z.hp<=0){score+=15;kills++;return false;} return true; });
+        }
+        if (ab.type === 'firetrail') {
+            if (frame % 4 === 0) {
+                fireTrail.push({ x:player.x, y:player.y, life:180, maxLife:180 });
+            }
+        }
+        if (ab.type === 'magnet') {
+            // Strong pull on all coins
+            for (let c of coins) {
+                c.x += (player.x-c.x)*0.08;
+                c.y += (player.y-c.y)*0.08;
+            }
+        }
+        if (abilityTimer <= 0) {
+            abilityActive = false;
+            // Reset effects
+            if (ab.type === 'adrenaline') player.speed = playerBaseSpeed;
+            if (ab.type === 'vanish') { playerInvisible = false; player.speed = playerBaseSpeed; }
+        }
+    }
+    // Fire trail damage (persists after ability ends)
+    for (let i = fireTrail.length-1; i >= 0; i--) {
+        fireTrail[i].life--;
+        if (fireTrail[i].life <= 0) { fireTrail.splice(i,1); continue; }
+        for (let z of zombies) {
+            let d = Math.sqrt((z.x-fireTrail[i].x)**2+(z.y-fireTrail[i].y)**2);
+            if (d < 20 && frame % 15 === 0) z.hp -= 0.5;
+        }
+        zombies = zombies.filter(z => { if(z.hp<=0){score+=15;kills++;return false;} return true; });
+    }
+    // Dark pulse visual effect countdown
+    if (darkPulseEffect > 0) darkPulseEffect--;
+
     // Player movement (keyboard + joystick)
     let pmx = 0, pmy = 0;
     if (keys['w']||keys['arrowup']) pmy--;
@@ -955,9 +1147,9 @@ function update() {
                 // All bots infected = game over
                 if (bots.length === 0) {
                     gameActive = false;
-                    document.getElementById('end-title').innerText = 'CITY CONSUMED';
+                    document.getElementById('end-title').innerText = 'YOU WIN!';
                     document.getElementById('end-title').style.color = '#44ff44';
-                    document.getElementById('end-message').innerText = 'You infected everyone. The apocalypse is complete.';
+                    document.getElementById('end-message').innerText = 'You infected everyone! The city is yours.';
                     document.getElementById('final-score').innerText = score;
                     document.getElementById('final-kills').innerText = kills;
                     document.getElementById('final-survivors').innerText = 0;
@@ -972,9 +1164,18 @@ function update() {
     // Zombie AI
     for (let i = zombies.length-1; i >= 0; i--) {
         let z = zombies[i];
-        // Chase closest target (ignore player in infector mode)
+        // Decrement frozen/stunned timers
+        if (z.frozen && z.frozen > 0) { z.frozen--; if (z.frozen <= 0) z.frozen = 0; }
+        if (z.stunned && z.stunned > 0) { z.stunned--; if (z.stunned <= 0) z.stunned = 0; }
+        // Skip movement if frozen or stunned
+        if (z.frozen > 0 || z.stunned > 0) {
+            // Still can be hit by bullets, so continue to bullet check below
+        } else {
+        // Chase closest target (ignore player in infector mode or when invisible)
         let tx, ty, best;
         if (infectorMode) {
+            tx = z.x; ty = z.y; best = Infinity;
+        } else if (playerInvisible) {
             tx = z.x; ty = z.y; best = Infinity;
         } else {
             tx = player.x; ty = player.y;
@@ -989,6 +1190,7 @@ function update() {
         z.x = Math.max(z.size, Math.min(WORLD_W-z.size, z.x));
         z.y = Math.max(z.size, Math.min(WORLD_H-z.size, z.y));
         pushOutOfBuildings(z);
+        }
 
         // Infect bots
         for (let bi = bots.length-1; bi >= 0; bi--) {
@@ -1295,10 +1497,60 @@ function draw() {
         drawCartoonBot(bot.x, bot.y, bot.size, bot.name, bot.color);
     });
 
+    // Fire trail
+    fireTrail.forEach(f => {
+        let alpha = f.life / f.maxLife;
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.beginPath(); ctx.arc(f.x, f.y, 12, 0, Math.PI*2);
+        let fg = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, 12);
+        fg.addColorStop(0, '#ffaa00');
+        fg.addColorStop(0.5, '#ff4400');
+        fg.addColorStop(1, 'rgba(255,0,0,0)');
+        ctx.fillStyle = fg; ctx.fill();
+        ctx.globalAlpha = 1;
+    });
+
     // Zombies
     zombies.forEach(z => {
         drawCartoonZombie(z.x, z.y, z.size, z.wasBot);
+        // Frozen effect - ice overlay
+        if (z.frozen > 0) {
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath(); ctx.arc(z.x, z.y, z.size+5, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(100,200,255,0.4)'; ctx.fill();
+            ctx.strokeStyle = '#88ddff'; ctx.lineWidth = 2; ctx.stroke();
+            // Ice crystals
+            ctx.fillStyle = '#aaeeff';
+            ctx.fillRect(z.x-3, z.y-z.size-8, 6, 8);
+            ctx.fillRect(z.x-8, z.y-z.size-3, 5, 5);
+            ctx.fillRect(z.x+4, z.y-z.size-5, 4, 6);
+            ctx.globalAlpha = 1;
+        }
+        // Stunned effect - sparks
+        if (z.stunned > 0) {
+            ctx.globalAlpha = 0.6;
+            let sparkAngle = frame * 0.15;
+            for (let s = 0; s < 3; s++) {
+                let sa = sparkAngle + s * (Math.PI*2/3);
+                let sx = z.x + Math.cos(sa) * (z.size+6);
+                let sy = z.y - z.size*0.5 + Math.sin(sa) * 8;
+                ctx.fillStyle = '#cc44ff';
+                ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.fillStyle = '#cc44ff'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('STUNNED', z.x, z.y - z.size - 10);
+            ctx.globalAlpha = 1;
+        }
     });
+
+    // Dark pulse shockwave ring
+    if (darkPulseEffect > 0) {
+        let radius = (30 - darkPulseEffect) * 10;
+        ctx.globalAlpha = darkPulseEffect / 30;
+        ctx.beginPath(); ctx.arc(player.x, player.y, radius, 0, Math.PI*2);
+        ctx.strokeStyle = '#8888ff'; ctx.lineWidth = 4; ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
 
     // Player
     if (infectorMode) {
@@ -1306,6 +1558,14 @@ function draw() {
         // "YOU" label above player zombie
         ctx.fillStyle = '#44ff44'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText('YOU', player.x, player.y - player.size * 1.3);
+    } else if (playerInvisible) {
+        // Ghost effect - semi-transparent player
+        ctx.globalAlpha = 0.25;
+        let pc = getPC();
+        drawCartoonPerson(player.x, player.y, player.size, player.angle, pc, true);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(160,80,255,0.5)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('INVISIBLE', player.x, player.y - player.size * 1.3);
     } else {
         let pc = getPC();
         drawCartoonPerson(player.x, player.y, player.size, player.angle, pc, true);
@@ -1368,6 +1628,76 @@ function draw() {
         ctx.textAlign = 'center';
         ctx.fillText('TAP TO SHOOT', VW * 0.7, VH - 30);
         ctx.globalAlpha = 1;
+
+        // Mobile ability button (left side, above joystick)
+        if (!infectorMode) {
+            let abx = 120, aby = VH - 230;
+            let abr = 30;
+            let ab = getAbility();
+            let ready = abilityCooldown <= 0 && !abilityActive;
+            ctx.globalAlpha = ready ? 0.8 : 0.4;
+            ctx.beginPath(); ctx.arc(abx, aby, abr, 0, Math.PI*2);
+            ctx.fillStyle = ready ? '#aa44ff' : '#333';
+            ctx.fill();
+            // Cooldown arc
+            if (abilityCooldown > 0) {
+                let pct = abilityCooldown / ab.cooldown;
+                ctx.beginPath(); ctx.moveTo(abx, aby);
+                ctx.arc(abx, aby, abr, -Math.PI/2, -Math.PI/2 + Math.PI*2*(1-pct));
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(170,68,255,0.3)'; ctx.fill();
+            }
+            ctx.strokeStyle = ready ? '#cc66ff' : '#555'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('Q', abx, aby - 4);
+            ctx.font = '7px sans-serif';
+            ctx.fillText(ab.name, abx, aby + 10);
+            if (abilityCooldown > 0) {
+                ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 11px sans-serif';
+                ctx.fillText(Math.ceil(abilityCooldown/60)+'s', abx, aby + 22);
+            }
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // Ability bar (desktop + mobile, bottom center)
+    if (!infectorMode) {
+        let ab = getAbility();
+        let barW = 160, barH = 30;
+        let barX = VW/2 - barW/2, barY = VH - 45;
+        let ready = abilityCooldown <= 0 && !abilityActive;
+        // Background
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = '#111';
+        roundRect(ctx, barX, barY, barW, barH, 6); ctx.fill();
+        ctx.strokeStyle = ready ? '#aa44ff' : '#444'; ctx.lineWidth = 1.5;
+        roundRect(ctx, barX, barY, barW, barH, 6); ctx.stroke();
+        // Cooldown fill
+        if (abilityCooldown > 0) {
+            let pct = 1 - (abilityCooldown / ab.cooldown);
+            ctx.fillStyle = 'rgba(170,68,255,0.3)';
+            roundRect(ctx, barX, barY, barW * pct, barH, 6); ctx.fill();
+        } else if (abilityActive) {
+            let pct = abilityTimer / ab.duration;
+            ctx.fillStyle = 'rgba(170,68,255,0.5)';
+            roundRect(ctx, barX, barY, barW * pct, barH, 6); ctx.fill();
+        } else {
+            ctx.fillStyle = 'rgba(170,68,255,0.25)';
+            roundRect(ctx, barX, barY, barW, barH, 6); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // Text
+        ctx.fillStyle = ready ? '#cc88ff' : '#888';
+        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        if (abilityActive) {
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillText(ab.name + ' ACTIVE', VW/2, barY + barH/2);
+        } else if (abilityCooldown > 0) {
+            ctx.fillText(ab.name + ' - ' + Math.ceil(abilityCooldown/60) + 's', VW/2, barY + barH/2);
+        } else {
+            ctx.fillText('[Q] ' + ab.name + ' - READY', VW/2, barY + barH/2);
+        }
     }
 }
 
