@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Apocalypse: Infection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { touch-action: none; overflow: hidden; }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            margin: 6px 0 2px;
+            color: #ff3333;
+            text-shadow: 0 0 15px rgba(255,51,51,0.6);
+            font-size: 1.8rem;
+            letter-spacing: 3px;
+        }
+        .subtitle { color: #888; font-size: 0.8rem; }
+        .controls-hint { color: #555; font-size: 0.7rem; margin-bottom: 4px; }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 40px rgba(255,0,0,0.15);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        canvas { display: block; cursor: crosshair; }
+        #ui-overlay {
+            position: absolute; top: 10px; left: 12px;
+            font-size: 14px; font-weight: bold;
+            pointer-events: none;
+            text-shadow: 1px 1px 4px #000, 0 0 10px rgba(0,0,0,0.9);
+        }
+        .ui-element { margin-bottom: 3px; }
+        .hp-bar-bg {
+            width: 140px; height: 10px; background: #333;
+            border-radius: 5px; overflow: hidden; margin-top: 2px; border: 1px solid #555;
+        }
+        .hp-bar-fill {
+            height: 100%; background: linear-gradient(90deg,#44cc44,#33aa33);
+            border-radius: 5px; transition: width 0.15s;
+        }
+        #shop-btn {
+            position: absolute; top: 10px; right: 12px;
+            background: linear-gradient(135deg,#ffcc00,#ff9900);
+            color: #000; border: none; padding: 7px 14px;
+            font-weight: bold; font-size: 12px; cursor: pointer;
+            border-radius: 5px;
+        }
+        #minimap-container {
+            position: absolute; bottom: 10px; right: 10px;
+            border: 2px solid #555; border-radius: 4px; overflow: hidden;
+        }
+        #shop-modal {
+            display: none; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: rgba(10,10,15,0.97); border: 2px solid #ffcc00;
+            padding: 20px; border-radius: 10px; width: 320px;
+            text-align: center; z-index: 10;
+        }
+        #shop-modal h3 { color: #ffcc00; margin-bottom: 6px; }
+        .shop-item {
+            display: flex; justify-content: space-between; align-items: center;
+            margin: 8px 0; padding: 8px 10px; background: #1a1a24;
+            border-radius: 6px; border: 1px solid #333;
+        }
+        .skin-preview-canvas {
+            width: 36px; height: 50px; margin-right: 8px; flex-shrink: 0;
+            border-radius: 4px;
+        }
+        .shop-item-info { display: flex; align-items: center; flex: 1; font-size: 13px; }
+        .shop-item button {
+            background: #28a745; color: white; border: none;
+            padding: 5px 12px; cursor: pointer; border-radius: 4px;
+            font-weight: bold; font-size: 11px;
+        }
+        .shop-item button:disabled { background: #444; cursor: not-allowed; }
+        #close-shop {
+            background: #dc3545; color: white; border: none;
+            padding: 6px 18px; margin-top: 10px; cursor: pointer;
+            border-radius: 4px; font-weight: bold;
+        }
+        #game-over-screen {
+            display: none; position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.88);
+            flex-direction: column; justify-content: center; align-items: center;
+            color: #ff3333; z-index: 20;
+        }
+        #game-over-screen h2 {
+            font-size: 2.8rem;
+            text-shadow: 0 0 25px rgba(255,51,51,0.7);
+        }
+        .stats { color: #ccc; margin: 8px 0; font-size: 0.95rem; line-height: 1.6; }
+        #restart-btn {
+            background: linear-gradient(135deg,#ff3333,#cc0000);
+            color: white; border: none; padding: 10px 26px;
+            font-size: 15px; font-weight: bold; cursor: pointer;
+            margin-top: 12px; border-radius: 6px;
+        }
+        #infection-counter {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            font-size: 13px; font-weight: bold; pointer-events: none;
+            text-shadow: 1px 1px 3px #000; color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>ZOMBIE APOCALYPSE: INFECTION</h1>
+    <div class="subtitle">One zombie. It infects everyone. Survive the big city.</div>
+    <div class="controls-hint">Desktop: WASD + Click | Mobile: Left stick to move, tap right to shoot, walk over blue crates for ammo</div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="960" height="580"></canvas>
+        <canvas id="minimap" width="160" height="100" id="minimap-container" style="position:absolute;bottom:10px;right:10px;border:2px solid #555;border-radius:4px;"></canvas>
+
+        <div id="ui-overlay">
+            <div class="ui-element" style="color:#ff5555;">HP</div>
+            <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar" style="width:100%"></div></div>
+            <div class="ui-element" style="color:#ffcc00;margin-top:6px;">Coins: $<span id="coin-display">0</span></div>
+            <div class="ui-element">Score: <span id="score-display">0</span></div>
+            <div class="ui-element" style="color:#88ccff;">Ammo: <span id="ammo-display">30</span>/30</div>
+            <div class="ui-element" style="color:#ddd;">Time: <span id="time-display">0:00</span></div>
+        </div>
+
+        <div id="infection-counter">
+            Survivors: <span id="surv-count" style="color:#44dd44;">0</span>
+            &nbsp; Infected: <span id="inf-count" style="color:#ff4444;">1</span>
+        </div>
+
+        <button id="shop-btn" onclick="toggleShop(true)">SKIN SHOP</button>
+
+        <div id="shop-modal">
+            <h3>SKIN SHOP</h3>
+            <p style="color:#aaa;font-size:13px;">Coins: $<span id="shop-coins">0</span></p>
+            <div class="shop-item">
+                <div class="shop-item-info">
+                    <canvas class="skin-preview-canvas" id="skinprev0" width="36" height="50"></canvas>
+                    <span>Commando</span>
+                </div>
+                <button id="btn-skin0" onclick="buySkin(0)">$15</button>
+            </div>
+            <div class="shop-item">
+                <div class="shop-item-info">
+                    <canvas class="skin-preview-canvas" id="skinprev1" width="36" height="50"></canvas>
+                    <span>Hazard</span>
+                </div>
+                <button id="btn-skin1" onclick="buySkin(1)">$25</button>
+            </div>
+            <div class="shop-item">
+                <div class="shop-item-info">
+                    <canvas class="skin-preview-canvas" id="skinprev2" width="36" height="50"></canvas>
+                    <span>Cyber</span>
+                </div>
+                <button id="btn-skin2" onclick="buySkin(2)">$40</button>
+            </div>
+            <div class="shop-item">
+                <div class="shop-item-info">
+                    <canvas class="skin-preview-canvas" id="skinprev3" width="36" height="50"></canvas>
+                    <span>Inferno</span>
+                </div>
+                <button id="btn-skin3" onclick="buySkin(3)">$60</button>
+            </div>
+            <div class="shop-item">
+                <div class="shop-item-info">
+                    <canvas class="skin-preview-canvas" id="skinprev4" width="36" height="50"></canvas>
+                    <span>Frost</span>
+                </div>
+                <button id="btn-skin4" onclick="buySkin(4)">$80</button>
+            </div>
+            <button id="close-shop" onclick="toggleShop(false)">Close</button>
+        </div>
+
+        <div id="game-over-screen">
+            <h2 id="end-title">GAME OVER</h2>
+            <p id="end-message">The infection consumed the city.</p>
+            <div class="stats">
+                Score: <span id="final-score">0</span><br>
+                Zombies Killed: <span id="final-kills">0</span><br>
+                Survivors Left: <span id="final-survivors">0</span><br>
+                Survived: <span id="final-time">0:00</span>
+            </div>
+            <button id="restart-btn" onclick="resetGame()">Try Again</button>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const miniCanvas = document.getElementById('minimap');
+const mctx = miniCanvas.getContext('2d');
+const VW = canvas.width, VH = canvas.height;
+
+// ── BIG WORLD ──────────────────────────────────────
+const WORLD_W = 3200, WORLD_H = 2000;
+let camX = 0, camY = 0;
+
+// ── Skins ──────────────────────────────────────────
+const SKINS = [
+    { name:'Commando', cost:15, shirt:'#2d6b3f', pants:'#3a3a2a', skin:'#e8b88a', hair:'#2a1a0a', hat:'#4a6b3a', glow:'rgba(51,255,136,0.3)', accent:'#5a8a4a' },
+    { name:'Hazard',   cost:25, shirt:'#ff6600', pants:'#333', skin:'#d4a574', hair:'#1a1a1a', hat:'#ffcc00', glow:'rgba(255,136,51,0.3)', accent:'#cc4400' },
+    { name:'Cyber',    cost:40, shirt:'#7733cc', pants:'#1a1a2e', skin:'#c8a8e0', hair:'#cc44ff', hat:null, glow:'rgba(204,68,255,0.4)', accent:'#aa55ff' },
+    { name:'Inferno',  cost:60, shirt:'#cc2200', pants:'#1a0a00', skin:'#e8b88a', hair:'#ff4400', hat:null, glow:'rgba(255,68,0,0.5)', accent:'#ff6600' },
+    { name:'Frost',    cost:80, shirt:'#0088cc', pants:'#1a2a3a', skin:'#d0e8ff', hair:'#aaddff', hat:'#00aaee', glow:'rgba(0,200,255,0.5)', accent:'#00ccff' },
+];
+let activeSkin = -1, purchasedSkins = [];
+
+// ── Map generation ─────────────────────────────────
+const buildings = [];
+const trees = [];
+const roads = [];
+const debris = [];
+const lakes = [];
+
+// Roads - grid of streets
+for (let rx = 300; rx < WORLD_W; rx += 500) {
+    roads.push({ x: rx, y: 0, w: 40, h: WORLD_H, horiz: false });
+}
+for (let ry = 250; ry < WORLD_H; ry += 400) {
+    roads.push({ x: 0, y: ry, w: WORLD_W, h: 40, horiz: true });
+}
+
+function onRoad(x, y, pad) {
+    for (let r of roads) {
+        if (x + pad > r.x && x - pad < r.x + r.w && y + pad > r.y && y - pad < r.y + r.h) return true;
+    }
+    return false;
+}
+
+// Buildings between roads
+for (let i = 0; i < 40; i++) {
+    let bw = 60 + Math.random() * 100, bh = 50 + Math.random() * 80;
+    let bx = 40 + Math.random() * (WORLD_W - 120);
+    let by = 40 + Math.random() * (WORLD_H - 120);
+    if (onRoad(bx + bw/2, by + bh/2, Math.max(bw, bh)/2 + 20)) continue;
+    buildings.push({ x: bx, y: by, w: bw, h: bh, color: ['#2a2a35','#2e2830','#282e2a','#33303a'][i%4] });
+}
+
+// Trees scattered
+for (let i = 0; i < 80; i++) {
+    let tx = 20 + Math.random() * (WORLD_W - 40);
+    let ty = 20 + Math.random() * (WORLD_H - 40);
+    if (onRoad(tx, ty, 20)) continue;
+    let tooClose = false;
+    for (let b of buildings) {
+        if (tx > b.x - 15 && tx < b.x + b.w + 15 && ty > b.y - 15 && ty < b.y + b.h + 15) { tooClose = true; break; }
+    }
+    if (!tooClose) trees.push({ x: tx, y: ty, r: 10 + Math.random() * 14, shade: Math.random() });
+}
+
+// Lakes
+for (let i = 0; i < 4; i++) {
+    lakes.push({
+        x: 200 + Math.random() * (WORLD_W - 400),
+        y: 200 + Math.random() * (WORLD_H - 400),
+        rx: 40 + Math.random() * 60,
+        ry: 30 + Math.random() * 45,
+    });
+}
+
+// Debris
+for (let i = 0; i < 60; i++) {
+    debris.push({
+        x: Math.random() * WORLD_W, y: Math.random() * WORLD_H,
+        size: 2 + Math.random() * 5, rot: Math.random() * Math.PI * 2,
+        color: ['#3a3a2a','#4a4a3a','#2e2e20','#555540'][i%4],
+    });
+}
+
+// ── Game state ─────────────────────────────────────
+let player, bots, zombies, bullets, coins, particles, keys, gameActive;
+let score, kills, ammo, maxAmmo, frame, survivalTimer, totalSeconds;
+let totalCoinsGlobal = 0;
+
+function init() {
+    player = { x: WORLD_W/2, y: WORLD_H/2, size: 16, speed: 4, hp: 100, maxHp: 100, angle: 0 };
+    bots = []; zombies = []; bullets = []; coins = []; particles = []; ammoCrates = [];
+    keys = {}; score = 0; kills = 0; ammo = 30; maxAmmo = 30;
+    frame = 0; survivalTimer = 0; totalSeconds = 0; gameActive = true;
+
+    // 20 survivor bots spread across the map
+    const botNames = ['Alex','Sam','Pat','Jay','Riv','Kai','Ari','Sky','Val','Lee',
+                      'Max','Rey','Zoe','Fin','Nico','Mia','Ash','Juno','Eli','Tara'];
+    const botColors = ['#55aaff','#55cc77','#ddaa55','#dd77aa','#77ddcc','#aabb66',
+                       '#ff7799','#99ddff','#ddcc77','#88aadd'];
+    for (let i = 0; i < 20; i++) {
+        let bx, by;
+        do {
+            bx = 60 + Math.random() * (WORLD_W - 120);
+            by = 60 + Math.random() * (WORLD_H - 120);
+        } while (collidesBuilding(bx, by, 14));
+        bots.push({
+            x: bx, y: by, size: 14, speed: 1.2 + Math.random() * 1.4,
+            dx: (Math.random()-0.5)*2, dy: (Math.random()-0.5)*2,
+            changeTimer: Math.random()*120,
+            color: botColors[i % botColors.length],
+            name: botNames[i],
+        });
+    }
+
+    // 1 fast zombie at a random edge
+    let edge = Math.floor(Math.random()*4);
+    let zx, zy;
+    if (edge === 0) { zx = 20; zy = Math.random()*WORLD_H; }
+    else if (edge === 1) { zx = WORLD_W-20; zy = Math.random()*WORLD_H; }
+    else if (edge === 2) { zx = Math.random()*WORLD_W; zy = 20; }
+    else { zx = Math.random()*WORLD_W; zy = WORLD_H-20; }
+    zombies.push({ x: zx, y: zy, size: 18, speed: 4.6, hp: 4, wasBot: false });
+
+    // Spawn initial ammo crates near player
+    for (let i = 0; i < 4; i++) {
+        let ax = player.x + (Math.random()-0.5)*600;
+        let ay = player.y + (Math.random()-0.5)*400;
+        ax = Math.max(60, Math.min(WORLD_W-60, ax));
+        ay = Math.max(60, Math.min(WORLD_H-60, ay));
+        if (!collidesBuilding(ax,ay,16)) {
+            ammoCrates.push({ x:ax, y:ay, size:16, life:2400, ammoAmount: 10+Math.floor(Math.random()*11) });
+        }
+    }
+
+    document.getElementById('game-over-screen').style.display = 'none';
+    document.getElementById('end-title').innerText = 'GAME OVER';
+    document.getElementById('end-title').style.color = '#ff3333';
+    document.getElementById('end-message').innerText = 'The infection consumed the city.';
+    updateUI();
+}
+
+function collidesBuilding(x, y, r) {
+    for (let b of buildings) {
+        let cx = Math.max(b.x, Math.min(x, b.x+b.w));
+        let cy = Math.max(b.y, Math.min(y, b.y+b.h));
+        if (Math.sqrt((x-cx)**2 + (y-cy)**2) < r) return true;
+    }
+    return false;
+}
+
+function pushOutOfBuildings(e) {
+    for (let b of buildings) {
+        let cx = Math.max(b.x, Math.min(e.x, b.x+b.w));
+        let cy = Math.max(b.y, Math.min(e.y, b.y+b.h));
+        let dx = e.x - cx, dy = e.y - cy;
+        let d = Math.sqrt(dx*dx + dy*dy);
+        if (d < e.size && d > 0) {
+            e.x = cx + (dx/d)*e.size;
+            e.y = cy + (dy/d)*e.size;
+        }
+    }
+}
+
+// ── Touch / Mobile detection ──────────────────────
+let isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+// ── Virtual joystick state ────────────────────────
+let joystick = { active: false, id: null, startX: 0, startY: 0, dx: 0, dy: 0, baseX: 0, baseY: 0 };
+const JOY_RADIUS = 60, JOY_KNOB = 28;
+let shootTouches = []; // for right-side shooting
+let autoShootInterval = null;
+let lastShootAngle = 0;
+let ammoCrates = []; // ammo pickups on the map
+
+// ── Keyboard controls (desktop) ───────────────────
+window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'r' && gameActive) { ammo = maxAmmo; updateUI(); }
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener('mousemove', e => {
+    if (!player || isMobile) return;
+    const r = canvas.getBoundingClientRect();
+    const sx = player.x - camX, sy = player.y - camY;
+    player.angle = Math.atan2(e.clientY - r.top - sy, e.clientX - r.left - sx);
+});
+
+canvas.addEventListener('mousedown', e => {
+    if (isMobile) return;
+    if (!gameActive || document.getElementById('shop-modal').style.display === 'block') return;
+    if (ammo <= 0) return;
+    const r = canvas.getBoundingClientRect();
+    const sx = player.x - camX, sy = player.y - camY;
+    const angle = Math.atan2(e.clientY - r.top - sy, e.clientX - r.left - sx);
+    fireBullet(angle);
+});
+
+function fireBullet(angle) {
+    if (ammo <= 0) return;
+    bullets.push({
+        x: player.x + Math.cos(angle)*player.size,
+        y: player.y + Math.sin(angle)*player.size,
+        radius: 3, speed: 12, dx: Math.cos(angle), dy: Math.sin(angle),
+    });
+    ammo--;
+    player.angle = angle;
+    for (let p = 0; p < 4; p++) {
+        particles.push({
+            x: player.x + Math.cos(angle)*(player.size+5),
+            y: player.y + Math.sin(angle)*(player.size+5),
+            dx: Math.cos(angle+(Math.random()-0.5))*(2+Math.random()*3),
+            dy: Math.sin(angle+(Math.random()-0.5))*(2+Math.random()*3),
+            life: 8+Math.random()*6, maxLife: 14, color: '#ffdd44', size: 2+Math.random()*2,
+        });
+    }
+    updateUI();
+}
+
+// ── Touch controls ────────────────────────────────
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (!gameActive || document.getElementById('shop-modal').style.display === 'block') return;
+    const rect = canvas.getBoundingClientRect();
+    for (let t of e.changedTouches) {
+        let tx = t.clientX - rect.left, ty = t.clientY - rect.top;
+        // Left 40% = joystick
+        if (tx < VW * 0.4 && !joystick.active) {
+            joystick.active = true;
+            joystick.id = t.identifier;
+            joystick.startX = tx;
+            joystick.startY = ty;
+            joystick.baseX = tx;
+            joystick.baseY = ty;
+            joystick.dx = 0;
+            joystick.dy = 0;
+        }
+        // Reload button check (bottom right area)
+        else if (tx > VW - 102 && tx < VW - 38 && ty > VH - 202 && ty < VH - 138) {
+            ammo = maxAmmo;
+            updateUI();
+        }
+        // Right 60% = shoot toward that point (auto-fire)
+        else {
+            let sx = player.x - camX, sy = player.y - camY;
+            let angle = Math.atan2(ty - sy, tx - sx);
+            lastShootAngle = angle;
+            fireBullet(angle);
+            shootTouches.push(t.identifier);
+            // Start auto-fire while holding
+            if (!autoShootInterval) {
+                autoShootInterval = setInterval(() => {
+                    if (gameActive && ammo > 0 && shootTouches.length > 0) {
+                        fireBullet(lastShootAngle);
+                    }
+                }, 150);
+            }
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    for (let t of e.changedTouches) {
+        if (joystick.active && t.identifier === joystick.id) {
+            let tx = t.clientX - rect.left, ty = t.clientY - rect.top;
+            let dx = tx - joystick.startX, dy = ty - joystick.startY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > JOY_RADIUS) { dx = (dx/dist)*JOY_RADIUS; dy = (dy/dist)*JOY_RADIUS; }
+            joystick.dx = dx / JOY_RADIUS; // -1 to 1
+            joystick.dy = dy / JOY_RADIUS;
+            joystick.baseX = joystick.startX + dx;
+            joystick.baseY = joystick.startY + dy;
+        }
+        // Update shoot angle if dragging on right side
+        if (shootTouches.includes(t.identifier)) {
+            let tx = t.clientX - rect.left, ty = t.clientY - rect.top;
+            let sx = player.x - camX, sy = player.y - camY;
+            lastShootAngle = Math.atan2(ty - sy, tx - sx);
+            player.angle = lastShootAngle;
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    for (let t of e.changedTouches) {
+        if (joystick.active && t.identifier === joystick.id) {
+            joystick.active = false; joystick.dx = 0; joystick.dy = 0; joystick.id = null;
+        }
+        let si = shootTouches.indexOf(t.identifier);
+        if (si !== -1) shootTouches.splice(si, 1);
+        if (shootTouches.length === 0 && autoShootInterval) {
+            clearInterval(autoShootInterval); autoShootInterval = null;
+        }
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', e => {
+    joystick.active = false; joystick.dx = 0; joystick.dy = 0; joystick.id = null;
+    shootTouches = [];
+    if (autoShootInterval) { clearInterval(autoShootInterval); autoShootInterval = null; }
+}, { passive: false });
+
+// ── Shop ───────────────────────────────────────────
+function toggleShop(o) {
+    document.getElementById('shop-modal').style.display = o ? 'block' : 'none';
+    if (o) { document.getElementById('shop-coins').innerText = totalCoinsGlobal; updateShopButtons(); drawSkinPreviews(); }
+}
+function buySkin(i) {
+    if (purchasedSkins.includes(i)) { activeSkin = i; }
+    else if (totalCoinsGlobal >= SKINS[i].cost) { totalCoinsGlobal -= SKINS[i].cost; purchasedSkins.push(i); activeSkin = i; }
+    document.getElementById('shop-coins').innerText = totalCoinsGlobal;
+    updateUI(); updateShopButtons();
+}
+function updateShopButtons() {
+    SKINS.forEach((s,i) => {
+        const btn = document.getElementById('btn-skin'+i);
+        if (purchasedSkins.includes(i)) {
+            btn.innerText = activeSkin===i ? 'Equipped' : 'Equip';
+            btn.style.background = activeSkin===i ? '#555' : '#007bff';
+            btn.disabled = activeSkin===i;
+        } else {
+            btn.innerText = '$'+s.cost;
+            btn.disabled = totalCoinsGlobal < s.cost;
+            btn.style.background = totalCoinsGlobal >= s.cost ? '#28a745' : '#444';
+        }
+    });
+}
+function getPC() {
+    if (activeSkin >= 0) return SKINS[activeSkin];
+    return { shirt:'#3366cc', pants:'#2a2a3a', skin:'#e8b88a', hair:'#3a2010', hat:null, glow:'rgba(51,153,255,0.3)', accent:'#4488dd' };
+}
+
+// ── Cartoon character drawing functions ──────────
+function drawCartoonPerson(cx, cy, size, angle, colors, isPlayer) {
+    const s = size * 0.85; // scale factor
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Glow for player
+    if (isPlayer && colors.glow) {
+        ctx.beginPath(); ctx.arc(0, 0, s + 10, 0, Math.PI*2);
+        ctx.fillStyle = colors.glow; ctx.fill();
+    }
+
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.9, s * 0.6, s * 0.2, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+
+    // Legs
+    ctx.fillStyle = colors.pants;
+    ctx.fillRect(-s*0.35, s*0.2, s*0.25, s*0.6); // left leg
+    ctx.fillRect(s*0.1, s*0.2, s*0.25, s*0.6);   // right leg
+    // Shoes
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-s*0.38, s*0.7, s*0.3, s*0.15);
+    ctx.fillRect(s*0.08, s*0.7, s*0.3, s*0.15);
+
+    // Body / shirt
+    ctx.fillStyle = colors.shirt;
+    roundRect(ctx, -s*0.45, -s*0.35, s*0.9, s*0.6, s*0.12);
+    ctx.fill();
+    // Shirt detail line
+    ctx.strokeStyle = colors.accent || '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, -s*0.3); ctx.lineTo(0, s*0.2); ctx.stroke();
+
+    // Arms
+    let armAngle = isPlayer ? Math.sin(frame * 0.05) * 0.15 : Math.sin(frame * 0.03 + cx) * 0.2;
+    ctx.fillStyle = colors.skin;
+    // Left arm
+    ctx.save();
+    ctx.translate(-s*0.5, -s*0.15);
+    ctx.rotate(-0.3 + armAngle);
+    ctx.fillRect(-s*0.12, 0, s*0.2, s*0.5);
+    // Hand
+    ctx.beginPath(); ctx.arc(0, s*0.5, s*0.1, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    // Right arm
+    ctx.save();
+    ctx.translate(s*0.5, -s*0.15);
+    ctx.rotate(0.3 - armAngle);
+    ctx.fillRect(-s*0.08, 0, s*0.2, s*0.5);
+    ctx.beginPath(); ctx.arc(s*0.02, s*0.5, s*0.1, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Gun (player only)
+    if (isPlayer) {
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(s*0.3, -s*0.07, s*0.9, s*0.14);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(s*1.0, -s*0.1, s*0.2, s*0.2);
+        ctx.restore();
+    }
+
+    // Head
+    ctx.beginPath(); ctx.arc(0, -s*0.6, s*0.35, 0, Math.PI*2);
+    ctx.fillStyle = colors.skin; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Hair
+    ctx.fillStyle = colors.hair;
+    ctx.beginPath();
+    ctx.arc(0, -s*0.7, s*0.35, Math.PI, Math.PI*2);
+    ctx.fill();
+    // Side hair
+    ctx.fillRect(-s*0.35, -s*0.75, s*0.12, s*0.2);
+    ctx.fillRect(s*0.23, -s*0.75, s*0.12, s*0.2);
+
+    // Hat (if skin has one)
+    if (colors.hat) {
+        ctx.fillStyle = colors.hat;
+        // Brim
+        ctx.fillRect(-s*0.45, -s*0.82, s*0.9, s*0.1);
+        // Cap
+        roundRect(ctx, -s*0.32, -s*1.05, s*0.64, s*0.28, s*0.08);
+        ctx.fill();
+    }
+
+    // Eyes (look toward angle for player)
+    let ex = isPlayer ? Math.cos(angle) * s * 0.06 : 0;
+    let ey = isPlayer ? Math.sin(angle) * s * 0.04 : 0;
+    // Whites
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(-s*0.13 + ex, -s*0.6, s*0.1, s*0.08, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s*0.13 + ex, -s*0.6, s*0.1, s*0.08, 0, 0, Math.PI*2); ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-s*0.13 + ex*1.8, -s*0.6 + ey, s*0.05, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.13 + ex*1.8, -s*0.6 + ey, s*0.05, 0, Math.PI*2); ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = '#8a6050';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, -s*0.48, s*0.08, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    // HP bar (player only)
+    if (isPlayer) {
+        let bw = s*2, bh = 4;
+        ctx.fillStyle = '#333'; ctx.fillRect(-bw/2, -s*1.2, bw, bh);
+        ctx.fillStyle = player.hp > 50 ? '#44cc44' : player.hp > 25 ? '#ffaa00' : '#ff3333';
+        ctx.fillRect(-bw/2, -s*1.2, bw * (player.hp / player.maxHp), bh);
+    }
+
+    ctx.restore();
+}
+
+function drawCartoonBot(cx, cy, size, name, color) {
+    // Derive outfit colors from the bot's base color
+    let colors = {
+        shirt: color,
+        pants: '#3a3a44',
+        skin: '#e0c8a0',
+        hair: '#3a2a1a',
+        hat: null,
+        accent: color,
+    };
+    drawCartoonPerson(cx, cy, size, 0, colors, false);
+    // Name tag
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(name, cx, cy - size * 1.1);
+}
+
+function drawCartoonZombie(cx, cy, size, wasBot) {
+    const s = size * 0.85;
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Green glow
+    ctx.beginPath(); ctx.arc(0, 0, s + 8, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(100,255,0,0.08)'; ctx.fill();
+
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.9, s * 0.6, s * 0.2, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+
+    // Legs (torn pants)
+    ctx.fillStyle = '#3a3a2a';
+    ctx.fillRect(-s*0.35, s*0.2, s*0.25, s*0.55);
+    ctx.fillRect(s*0.1, s*0.2, s*0.25, s*0.5);
+    // Torn edges
+    ctx.fillStyle = '#2a2a1a';
+    ctx.fillRect(-s*0.3, s*0.65, s*0.15, s*0.1);
+    ctx.fillRect(s*0.2, s*0.6, s*0.1, s*0.12);
+    // Bare feet
+    ctx.fillStyle = '#5a7a30';
+    ctx.fillRect(-s*0.38, s*0.7, s*0.28, s*0.12);
+    ctx.fillRect(s*0.08, s*0.65, s*0.28, s*0.12);
+
+    // Body (tattered shirt)
+    ctx.fillStyle = '#4a5a20';
+    roundRect(ctx, -s*0.45, -s*0.35, s*0.9, s*0.6, s*0.1);
+    ctx.fill();
+    // Tear marks
+    ctx.strokeStyle = '#3a4a15';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-s*0.2, -s*0.1); ctx.lineTo(-s*0.1, s*0.15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.15, -s*0.2); ctx.lineTo(s*0.25, s*0.1); ctx.stroke();
+
+    // Arms - stretched forward (zombie pose)
+    ctx.fillStyle = '#6b8f33';
+    let wobble = Math.sin(frame * 0.06 + cx) * 0.1;
+    // Left arm reaching forward
+    ctx.save();
+    ctx.translate(-s*0.5, -s*0.2);
+    ctx.rotate(-0.8 + wobble);
+    ctx.fillRect(-s*0.1, 0, s*0.18, s*0.6);
+    ctx.beginPath(); ctx.arc(0, s*0.6, s*0.09, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    // Right arm reaching forward
+    ctx.save();
+    ctx.translate(s*0.5, -s*0.2);
+    ctx.rotate(0.8 - wobble);
+    ctx.fillRect(-s*0.08, 0, s*0.18, s*0.6);
+    ctx.beginPath(); ctx.arc(s*0.02, s*0.6, s*0.09, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Head
+    ctx.beginPath(); ctx.arc(0, -s*0.6, s*0.35, 0, Math.PI*2);
+    ctx.fillStyle = '#6b8f33'; ctx.fill();
+    ctx.strokeStyle = '#3a5a10'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Messy hair / wounds
+    ctx.fillStyle = '#3a4a15';
+    ctx.beginPath();
+    ctx.arc(0, -s*0.75, s*0.3, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.fill();
+    ctx.fillRect(-s*0.3, -s*0.82, s*0.15, s*0.12);
+
+    // Red glowing eyes
+    ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ff2200';
+    ctx.beginPath(); ctx.arc(-s*0.13, -s*0.62, s*0.07, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.13, -s*0.62, s*0.07, 0, Math.PI*2); ctx.fill();
+    // Yellow pupils
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath(); ctx.arc(-s*0.13, -s*0.62, s*0.03, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.13, -s*0.62, s*0.03, 0, Math.PI*2); ctx.fill();
+
+    // Open mouth with teeth
+    ctx.fillStyle = '#1a0a00';
+    ctx.beginPath();
+    ctx.arc(0, -s*0.45, s*0.12, 0, Math.PI);
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = '#cccc88';
+    ctx.fillRect(-s*0.08, -s*0.45, s*0.04, s*0.06);
+    ctx.fillRect(s*0.02, -s*0.45, s*0.05, s*0.05);
+    ctx.fillRect(-s*0.02, -s*0.45, s*0.03, s*0.07);
+
+    // Infected tag
+    if (wasBot) {
+        ctx.fillStyle = 'rgba(255,100,100,0.6)'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('INFECTED', 0, -s * 1.15);
+    }
+
+    ctx.restore();
+}
+
+// Rounded rectangle helper
+function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+}
+function updateUI() {
+    const pct = Math.max(0,player.hp)/player.maxHp*100;
+    const bar = document.getElementById('hp-bar');
+    bar.style.width = pct+'%';
+    bar.style.background = pct>50 ? 'linear-gradient(90deg,#44cc44,#33aa33)' : pct>25 ? 'linear-gradient(90deg,#ffaa00,#cc7700)' : 'linear-gradient(90deg,#ff3333,#cc0000)';
+    document.getElementById('coin-display').innerText = totalCoinsGlobal;
+    document.getElementById('score-display').innerText = score;
+    document.getElementById('ammo-display').innerText = ammo;
+    document.getElementById('surv-count').innerText = bots.length;
+    document.getElementById('inf-count').innerText = zombies.length;
+}
+
+// ── Game Loop ──────────────────────────────────────
+function gameLoop() { frame++; update(); draw(); drawMinimap(); requestAnimationFrame(gameLoop); }
+
+function update() {
+    if (!gameActive || document.getElementById('shop-modal').style.display === 'block') return;
+
+    // Survival timer +1 score/sec
+    survivalTimer++;
+    if (survivalTimer >= 60) {
+        survivalTimer = 0; totalSeconds++; score++;
+        let m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+        document.getElementById('time-display').innerText = m+':'+(s<10?'0':'')+s;
+    }
+
+    // Player movement (keyboard + joystick)
+    let pmx = 0, pmy = 0;
+    if (keys['w']||keys['arrowup']) pmy--;
+    if (keys['s']||keys['arrowdown']) pmy++;
+    if (keys['a']||keys['arrowleft']) pmx--;
+    if (keys['d']||keys['arrowright']) pmx++;
+    // Add joystick input
+    if (joystick.active) { pmx += joystick.dx; pmy += joystick.dy; }
+    if (pmx||pmy) {
+        let len = Math.sqrt(pmx*pmx+pmy*pmy);
+        if (len > 1) { pmx /= len; pmy /= len; }
+        player.x += pmx*player.speed;
+        player.y += pmy*player.speed;
+        // Update player angle toward movement on mobile if not shooting
+        if (isMobile && shootTouches.length === 0) {
+            player.angle = Math.atan2(pmy, pmx);
+        }
+    }
+    player.x = Math.max(player.size, Math.min(WORLD_W-player.size, player.x));
+    player.y = Math.max(player.size, Math.min(WORLD_H-player.size, player.y));
+    pushOutOfBuildings(player);
+
+    // Camera follows player
+    camX = player.x - VW/2;
+    camY = player.y - VH/2;
+    camX = Math.max(0, Math.min(WORLD_W - VW, camX));
+    camY = Math.max(0, Math.min(WORLD_H - VH, camY));
+
+    // Bullets
+    for (let i = bullets.length-1; i >= 0; i--) {
+        let b = bullets[i];
+        b.x += b.dx*b.speed; b.y += b.dy*b.speed;
+        if (b.x<-20||b.x>WORLD_W+20||b.y<-20||b.y>WORLD_H+20||collidesBuilding(b.x,b.y,b.radius)) {
+            bullets.splice(i,1);
+        }
+    }
+
+    // Bot AI
+    for (let bot of bots) {
+        bot.changeTimer--;
+        if (bot.changeTimer <= 0) {
+            bot.dx = (Math.random()-0.5)*2; bot.dy = (Math.random()-0.5)*2;
+            bot.changeTimer = 80+Math.random()*150;
+        }
+        let nearZ = null, nearDist = 150;
+        for (let z of zombies) {
+            let d = Math.sqrt((z.x-bot.x)**2+(z.y-bot.y)**2);
+            if (d < nearDist) { nearDist = d; nearZ = z; }
+        }
+        if (nearZ) {
+            let fx = bot.x-nearZ.x, fy = bot.y-nearZ.y;
+            let fl = Math.sqrt(fx*fx+fy*fy);
+            bot.x += (fx/fl)*bot.speed*1.8;
+            bot.y += (fy/fl)*bot.speed*1.8;
+        } else {
+            bot.x += bot.dx*bot.speed*0.6;
+            bot.y += bot.dy*bot.speed*0.6;
+        }
+        bot.x = Math.max(bot.size, Math.min(WORLD_W-bot.size, bot.x));
+        bot.y = Math.max(bot.size, Math.min(WORLD_H-bot.size, bot.y));
+        pushOutOfBuildings(bot);
+    }
+
+    // Zombie AI
+    for (let i = zombies.length-1; i >= 0; i--) {
+        let z = zombies[i];
+        // Chase closest target
+        let tx = player.x, ty = player.y;
+        let best = Math.sqrt((player.x-z.x)**2+(player.y-z.y)**2);
+        for (let bot of bots) {
+            let d = Math.sqrt((bot.x-z.x)**2+(bot.y-z.y)**2);
+            if (d < best) { best = d; tx = bot.x; ty = bot.y; }
+        }
+        let dx = tx-z.x, dy = ty-z.y, dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist > 0) { z.x += (dx/dist)*z.speed; z.y += (dy/dist)*z.speed; }
+        z.x = Math.max(z.size, Math.min(WORLD_W-z.size, z.x));
+        z.y = Math.max(z.size, Math.min(WORLD_H-z.size, z.y));
+        pushOutOfBuildings(z);
+
+        // Infect bots
+        for (let bi = bots.length-1; bi >= 0; bi--) {
+            let bot = bots[bi];
+            if (Math.sqrt((z.x-bot.x)**2+(z.y-bot.y)**2) < z.size+bot.size) {
+                zombies.push({ x:bot.x, y:bot.y, size:16, speed:4.3+Math.random()*0.6, hp:2, wasBot:true });
+                for (let p=0;p<12;p++) particles.push({
+                    x:bot.x,y:bot.y, dx:(Math.random()-0.5)*5, dy:(Math.random()-0.5)*5,
+                    life:18+Math.random()*12, maxLife:30, color:'#44ff44', size:3+Math.random()*2,
+                });
+                bots.splice(bi,1); score += 2;
+            }
+        }
+
+        // Hit player
+        let pd = Math.sqrt((z.x-player.x)**2+(z.y-player.y)**2);
+        if (pd < z.size+player.size) {
+            player.hp -= 0.5;
+            if (player.hp <= 0) {
+                gameActive = false;
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('final-kills').innerText = kills;
+                document.getElementById('final-survivors').innerText = bots.length;
+                let m=Math.floor(totalSeconds/60),s=totalSeconds%60;
+                document.getElementById('final-time').innerText = m+':'+(s<10?'0':'')+s;
+                document.getElementById('game-over-screen').style.display = 'flex';
+            }
+        }
+
+        // Bullet hits zombie
+        for (let j = bullets.length-1; j >= 0; j--) {
+            let b = bullets[j];
+            if (Math.sqrt((b.x-z.x)**2+(b.y-z.y)**2) < z.size+b.radius) {
+                z.hp--; bullets.splice(j,1);
+                for (let p=0;p<6;p++) particles.push({
+                    x:z.x,y:z.y, dx:(Math.random()-0.5)*6, dy:(Math.random()-0.5)*6,
+                    life:10+Math.random()*10, maxLife:20, color:'#88ff44', size:2+Math.random()*3,
+                });
+                if (z.hp <= 0) {
+                    // Drop coins
+                    let cnt = 2 + Math.floor(Math.random()*3);
+                    for (let c=0; c<cnt; c++) {
+                        coins.push({
+                            x: z.x+(Math.random()-0.5)*30, y: z.y+(Math.random()-0.5)*30,
+                            size: 12, bob: Math.random()*Math.PI*2, life: 900, value: 1,
+                        });
+                    }
+                    zombies.splice(i,1); score += 15; kills++;
+                    // Win condition: all zombies dead
+                    if (zombies.length === 0) {
+                        gameActive = false;
+                        score += 100 + bots.length * 10; // bonus for survivors saved
+                        document.getElementById('end-title').innerText = 'YOU WIN!';
+                        document.getElementById('end-title').style.color = '#44ff44';
+                        document.getElementById('end-message').innerText = 'You eliminated the infection and saved the city!';
+                        document.getElementById('final-score').innerText = score;
+                        document.getElementById('final-kills').innerText = kills;
+                        document.getElementById('final-survivors').innerText = bots.length;
+                        let m=Math.floor(totalSeconds/60),s=totalSeconds%60;
+                        document.getElementById('final-time').innerText = m+':'+(s<10?'0':'')+s;
+                        document.getElementById('game-over-screen').style.display = 'flex';
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    // Coin pickup
+    for (let i = coins.length-1; i >= 0; i--) {
+        let c = coins[i];
+        c.life--;
+        if (c.life <= 0) { coins.splice(i,1); continue; }
+        let cd = Math.sqrt((player.x-c.x)**2+(player.y-c.y)**2);
+        // Magnetic pull
+        if (cd < 80) {
+            c.x += (player.x-c.x)*0.12;
+            c.y += (player.y-c.y)*0.12;
+        }
+        if (cd < player.size+c.size+10) {
+            totalCoinsGlobal += c.value;
+            score += 5;
+            for (let p=0;p<6;p++) particles.push({
+                x:c.x,y:c.y, dx:(Math.random()-0.5)*4, dy:(Math.random()-0.5)*4-1.5,
+                life:12+Math.random()*8, maxLife:20, color:'#ffee33', size:3+Math.random()*2,
+            });
+            coins.splice(i,1);
+        }
+    }
+
+    // Also scatter random coin spawns across the map
+    if (frame % 180 === 0) {
+        for (let c = 0; c < 3; c++) {
+            let cx = 50+Math.random()*(WORLD_W-100), cy = 50+Math.random()*(WORLD_H-100);
+            if (!collidesBuilding(cx,cy,12)) {
+                coins.push({ x:cx, y:cy, size:12, bob:Math.random()*Math.PI*2, life:1200, value:1 });
+            }
+        }
+    }
+
+    // Spawn ammo crates every 8 seconds, max 5 on map
+    if (frame % 480 === 0 && ammoCrates.length < 5) {
+        let ax = 60+Math.random()*(WORLD_W-120), ay = 60+Math.random()*(WORLD_H-120);
+        if (!collidesBuilding(ax,ay,16)) {
+            ammoCrates.push({ x:ax, y:ay, size:16, life:1800, ammoAmount: 10+Math.floor(Math.random()*11) });
+        }
+    }
+
+    // Ammo crate pickup
+    for (let i = ammoCrates.length-1; i >= 0; i--) {
+        let ac = ammoCrates[i];
+        ac.life--;
+        if (ac.life <= 0) { ammoCrates.splice(i,1); continue; }
+        let ad = Math.sqrt((player.x-ac.x)**2+(player.y-ac.y)**2);
+        if (ad < player.size+ac.size+6) {
+            ammo = Math.min(ammo + ac.ammoAmount, maxAmmo);
+            score += 3;
+            for (let p=0;p<8;p++) particles.push({
+                x:ac.x,y:ac.y, dx:(Math.random()-0.5)*5, dy:(Math.random()-0.5)*5,
+                life:15+Math.random()*10, maxLife:25, color:'#88ccff', size:3+Math.random()*2,
+            });
+            ammoCrates.splice(i,1);
+            updateUI();
+        }
+    }
+
+    // Particles
+    for (let i = particles.length-1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.dx; p.y += p.dy; p.dx *= 0.94; p.dy *= 0.94; p.life--;
+        if (p.life <= 0) particles.splice(i,1);
+    }
+    updateUI();
+}
+
+// ── Draw ───────────────────────────────────────────
+function draw() {
+    ctx.fillStyle = '#151a10';
+    ctx.fillRect(0,0,VW,VH);
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    // Ground texture patches
+    ctx.globalAlpha = 0.12;
+    for (let gx=0;gx<WORLD_W;gx+=60) for (let gy=0;gy<WORLD_H;gy+=60) {
+        let h=(gx*7+gy*13)%7;
+        if (h<2) { ctx.fillStyle=h===0?'#2a3020':'#222a1a'; ctx.fillRect(gx,gy,60,60); }
+    }
+    ctx.globalAlpha = 1;
+
+    // Lakes
+    lakes.forEach(l => {
+        ctx.beginPath();
+        ctx.ellipse(l.x, l.y, l.rx, l.ry, 0, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(20,60,100,0.5)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(40,90,140,0.4)';
+        ctx.lineWidth = 2; ctx.stroke();
+        // Shimmer
+        ctx.beginPath();
+        ctx.ellipse(l.x-l.rx*0.2, l.y-l.ry*0.2, l.rx*0.3, l.ry*0.25, 0, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(60,120,180,0.2)';
+        ctx.fill();
+    });
+
+    // Roads
+    roads.forEach(r => {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1;
+        ctx.setLineDash([12,12]);
+        if (r.horiz) {
+            ctx.beginPath(); ctx.moveTo(r.x,r.y+r.h/2); ctx.lineTo(r.x+r.w,r.y+r.h/2); ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.moveTo(r.x+r.w/2,r.y); ctx.lineTo(r.x+r.w/2,r.y+r.h); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+    });
+
+    // Debris
+    debris.forEach(d => {
+        ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(d.rot);
+        ctx.fillStyle=d.color; ctx.fillRect(-d.size/2,-d.size/2,d.size,d.size*0.6);
+        ctx.restore();
+    });
+
+    // Buildings
+    buildings.forEach(b => {
+        ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(b.x+5,b.y+5,b.w,b.h);
+        ctx.fillStyle=b.color; ctx.fillRect(b.x,b.y,b.w,b.h);
+        ctx.strokeStyle='#444'; ctx.lineWidth=2; ctx.strokeRect(b.x,b.y,b.w,b.h);
+        ctx.fillStyle='#111';
+        for (let wx=b.x+8;wx<b.x+b.w-8;wx+=18) for (let wy=b.y+8;wy<b.y+b.h-8;wy+=18) {
+            ctx.fillRect(wx,wy,10,10);
+            if ((wx*3+wy*7)%11<3) { ctx.fillStyle='rgba(255,200,50,0.25)'; ctx.fillRect(wx,wy,10,10); ctx.fillStyle='#111'; }
+        }
+    });
+
+    // Trees
+    trees.forEach(t => {
+        ctx.fillStyle='rgba(0,0,0,0.2)';
+        ctx.beginPath(); ctx.arc(t.x+4,t.y+4,t.r,0,Math.PI*2); ctx.fill();
+        let g=ctx.createRadialGradient(t.x-t.r*0.3,t.y-t.r*0.3,2,t.x,t.y,t.r);
+        g.addColorStop(0, t.shade>0.5?'#3a6622':'#2d5a1a');
+        g.addColorStop(1, t.shade>0.5?'#1e3a0e':'#152e08');
+        ctx.fillStyle=g;
+        ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#5a3a1a'; ctx.fillRect(t.x-2,t.y+t.r-4,4,8);
+    });
+
+    // Coins
+    coins.forEach(c => {
+        let bob = Math.sin(frame*0.07+c.bob)*4;
+        let cy = c.y+bob;
+        let fade = c.life<90 ? c.life/90 : 1;
+        ctx.globalAlpha = fade;
+        // Glow
+        ctx.beginPath(); ctx.arc(c.x,cy,c.size+8,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,220,0,0.3)'; ctx.fill();
+        // Outer
+        ctx.beginPath(); ctx.arc(c.x,cy,c.size,0,Math.PI*2);
+        let cg = ctx.createRadialGradient(c.x-3,cy-3,2,c.x,cy,c.size);
+        cg.addColorStop(0,'#ffee55'); cg.addColorStop(1,'#cc9900');
+        ctx.fillStyle=cg; ctx.fill();
+        ctx.strokeStyle='#ffee88'; ctx.lineWidth=2; ctx.stroke();
+        // $ text
+        ctx.fillStyle='#886600'; ctx.font='bold 13px sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('$',c.x,cy+1);
+        ctx.globalAlpha = 1;
+    });
+
+    // Particles
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life/p.maxLife;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*(p.life/p.maxLife),0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // Ammo crates
+    ammoCrates.forEach(ac => {
+        let fade = ac.life < 120 ? ac.life/120 : 1;
+        ctx.globalAlpha = fade;
+        // Glow
+        ctx.beginPath(); ctx.arc(ac.x,ac.y,ac.size+6,0,Math.PI*2);
+        ctx.fillStyle='rgba(100,180,255,0.2)'; ctx.fill();
+        // Box
+        ctx.fillStyle='#2a4a6a';
+        ctx.fillRect(ac.x-ac.size,ac.y-ac.size,ac.size*2,ac.size*2);
+        ctx.strokeStyle='#5599cc'; ctx.lineWidth=2;
+        ctx.strokeRect(ac.x-ac.size,ac.y-ac.size,ac.size*2,ac.size*2);
+        // Cross / ammo symbol
+        ctx.fillStyle='#88ccff'; ctx.font='bold 16px sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('A',ac.x,ac.y+1);
+        // Amount label
+        ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='9px sans-serif';
+        ctx.fillText('+'+ac.ammoAmount,ac.x,ac.y-ac.size-6);
+        ctx.globalAlpha = 1;
+    });
+
+    // Bullets
+    bullets.forEach(b => {
+        ctx.fillStyle='#ffff55';
+        ctx.beginPath(); ctx.arc(b.x,b.y,b.radius,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(255,255,100,0.35)';
+        ctx.beginPath(); ctx.arc(b.x-b.dx*5,b.y-b.dy*5,b.radius*0.6,0,Math.PI*2); ctx.fill();
+    });
+
+    // Bots
+    bots.forEach(bot => {
+        drawCartoonBot(bot.x, bot.y, bot.size, bot.name, bot.color);
+    });
+
+    // Zombies
+    zombies.forEach(z => {
+        drawCartoonZombie(z.x, z.y, z.size, z.wasBot);
+    });
+
+    // Player
+    let pc = getPC();
+    drawCartoonPerson(player.x, player.y, player.size, player.angle, pc, true);
+
+    ctx.restore();
+
+    // World boundary indicator
+    ctx.strokeStyle='rgba(255,0,0,0.15)'; ctx.lineWidth=1;
+    ctx.strokeRect(-camX,-camY,WORLD_W,WORLD_H);
+
+    // ── Touch controls overlay (mobile only) ──────
+    if (isMobile) {
+        // Joystick base
+        let jx = joystick.active ? joystick.startX : 120;
+        let jy = joystick.active ? joystick.startY : VH - 130;
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath(); ctx.arc(jx, jy, JOY_RADIUS, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Joystick knob
+        let knobX = jx + joystick.dx * JOY_RADIUS;
+        let knobY = jy + joystick.dy * JOY_RADIUS;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath(); ctx.arc(knobX, knobY, JOY_KNOB, 0, Math.PI*2);
+        ctx.fillStyle = '#ccc'; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Reload button (bottom right, above minimap)
+        let rbx = VW - 70, rby = VH - 170;
+        let rbr = 32;
+        ctx.globalAlpha = ammo < maxAmmo ? 0.7 : 0.3;
+        ctx.beginPath(); ctx.arc(rbx, rby, rbr, 0, Math.PI*2);
+        ctx.fillStyle = ammo < maxAmmo ? '#2266aa' : '#333';
+        ctx.fill();
+        ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('R', rbx, rby - 2);
+        ctx.font = '9px sans-serif';
+        ctx.fillText('RELOAD', rbx, rby + 12);
+        ctx.globalAlpha = 1;
+
+        // Crosshair hint on right side
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('TAP TO SHOOT', VW * 0.7, VH - 30);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// ── Minimap ────────────────────────────────────────
+function drawMinimap() {
+    const mw=miniCanvas.width, mh=miniCanvas.height;
+    const sx=mw/WORLD_W, sy=mh/WORLD_H;
+    mctx.fillStyle='#111'; mctx.fillRect(0,0,mw,mh);
+
+    // Buildings
+    buildings.forEach(b => {
+        mctx.fillStyle='#333'; mctx.fillRect(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
+    });
+    // Roads
+    roads.forEach(r => {
+        mctx.fillStyle='#1a1a1a'; mctx.fillRect(r.x*sx,r.y*sy,r.w*sx,r.h*sy);
+    });
+    // Coins
+    coins.forEach(c => {
+        mctx.fillStyle='#ffcc00'; mctx.fillRect(c.x*sx-1,c.y*sy-1,3,3);
+    });
+    // Ammo crates
+    ammoCrates.forEach(ac => {
+        mctx.fillStyle='#5599cc'; mctx.fillRect(ac.x*sx-2,ac.y*sy-2,4,4);
+    });
+    // Bots
+    bots.forEach(b => {
+        mctx.fillStyle='#55aaff'; mctx.fillRect(b.x*sx-1,b.y*sy-1,3,3);
+    });
+    // Zombies
+    zombies.forEach(z => {
+        mctx.fillStyle='#ff3333'; mctx.fillRect(z.x*sx-1.5,z.y*sy-1.5,4,4);
+    });
+    // Player
+    mctx.fillStyle='#00ff88'; mctx.fillRect(player.x*sx-2,player.y*sy-2,5,5);
+    // Viewport rect
+    mctx.strokeStyle='#fff'; mctx.lineWidth=1;
+    mctx.strokeRect(camX*sx,camY*sy,VW*sx,VH*sy);
+}
+
+function drawSkinPreviews() {
+    SKINS.forEach((skin, i) => {
+        let c = document.getElementById('skinprev' + i);
+        if (!c) return;
+        let pc = c.getContext('2d');
+        pc.clearRect(0, 0, 36, 50);
+        let s = 12;
+        let cx = 18, cy = 28;
+        // Legs
+        pc.fillStyle = skin.pants;
+        pc.fillRect(cx-s*0.35, cy+s*0.2, s*0.25, s*0.6);
+        pc.fillRect(cx+s*0.1, cy+s*0.2, s*0.25, s*0.6);
+        // Shoes
+        pc.fillStyle = '#222';
+        pc.fillRect(cx-s*0.38, cy+s*0.7, s*0.3, s*0.15);
+        pc.fillRect(cx+s*0.08, cy+s*0.7, s*0.3, s*0.15);
+        // Body
+        pc.fillStyle = skin.shirt;
+        pc.fillRect(cx-s*0.45, cy-s*0.35, s*0.9, s*0.6);
+        // Arms
+        pc.fillStyle = skin.skin;
+        pc.fillRect(cx-s*0.6, cy-s*0.1, s*0.18, s*0.45);
+        pc.fillRect(cx+s*0.42, cy-s*0.1, s*0.18, s*0.45);
+        // Head
+        pc.beginPath(); pc.arc(cx, cy-s*0.6, s*0.35, 0, Math.PI*2);
+        pc.fillStyle = skin.skin; pc.fill();
+        // Hair
+        pc.fillStyle = skin.hair;
+        pc.beginPath(); pc.arc(cx, cy-s*0.7, s*0.35, Math.PI, Math.PI*2); pc.fill();
+        // Hat
+        if (skin.hat) {
+            pc.fillStyle = skin.hat;
+            pc.fillRect(cx-s*0.45, cy-s*0.82, s*0.9, s*0.1);
+            pc.fillRect(cx-s*0.32, cy-s*1.05, s*0.64, s*0.28);
+        }
+        // Eyes
+        pc.fillStyle = '#fff';
+        pc.beginPath(); pc.arc(cx-s*0.12, cy-s*0.6, s*0.08, 0, Math.PI*2); pc.fill();
+        pc.beginPath(); pc.arc(cx+s*0.12, cy-s*0.6, s*0.08, 0, Math.PI*2); pc.fill();
+        pc.fillStyle = '#111';
+        pc.beginPath(); pc.arc(cx-s*0.12, cy-s*0.6, s*0.04, 0, Math.PI*2); pc.fill();
+        pc.beginPath(); pc.arc(cx+s*0.12, cy-s*0.6, s*0.04, 0, Math.PI*2); pc.fill();
+    });
+}
+
+function resetGame() { init(); }
+init();
+gameLoop();
+// Draw skin shop previews after a short delay for DOM readiness
+setTimeout(drawSkinPreviews, 100);
+</script>
+</body>
+</html>
