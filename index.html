@@ -338,6 +338,7 @@ let infectorMode = false, infectCount = 0;
 let abilityCooldown = 0, abilityActive = false, abilityTimer = 0;
 let fireTrail = [], playerInvisible = false, playerBaseSpeed = 4;
 let darkPulseEffect = 0; // visual ring expansion
+let zombieProjectiles = []; // spitter projectiles
 
 function init() {
     player = { x: WORLD_W/2, y: WORLD_H/2, size: 16, speed: 4, hp: 100, maxHp: 100, angle: 0 };
@@ -347,6 +348,7 @@ function init() {
     infectorMode = false; infectCount = 0;
     abilityCooldown = 0; abilityActive = false; abilityTimer = 0;
     fireTrail = []; playerInvisible = false; playerBaseSpeed = 4; darkPulseEffect = 0;
+    zombieProjectiles = [];
 
     // 20 survivor bots spread across the map
     const botNames = ['Alex','Sam','Pat','Jay','Riv','Kai','Ari','Sky','Val','Lee',
@@ -375,7 +377,7 @@ function init() {
     else if (edge === 1) { zx = WORLD_W-20; zy = Math.random()*WORLD_H; }
     else if (edge === 2) { zx = Math.random()*WORLD_W; zy = 20; }
     else { zx = Math.random()*WORLD_W; zy = WORLD_H-20; }
-    zombies.push({ x: zx, y: zy, size: 18, speed: 4.6, hp: 4, wasBot: false });
+    zombies.push({ x: zx, y: zy, size: 18, speed: 4.6, hp: 4, wasBot: false, ztype: 'normal' });
 
     // Spawn initial ammo crates near player
     for (let i = 0; i < 4; i++) {
@@ -495,8 +497,12 @@ canvas.addEventListener('touchstart', e => {
     const rect = canvas.getBoundingClientRect();
     for (let t of e.changedTouches) {
         let tx = t.clientX - rect.left, ty = t.clientY - rect.top;
+        // Ability button check (left side, above joystick) - check BEFORE joystick
+        if (tx > 58 && tx < 182 && ty > VH - 270 && ty < VH - 190) {
+            activateAbility();
+        }
         // Left 40% = joystick
-        if (tx < VW * 0.4 && !joystick.active) {
+        else if (tx < VW * 0.4 && !joystick.active) {
             joystick.active = true;
             joystick.id = t.identifier;
             joystick.startX = tx;
@@ -505,10 +511,6 @@ canvas.addEventListener('touchstart', e => {
             joystick.baseY = ty;
             joystick.dx = 0;
             joystick.dy = 0;
-        }
-        // Ability button check (left side, above joystick)
-        else if (tx > 88 && tx < 152 && ty > VH - 262 && ty < VH - 198) {
-            activateAbility();
         }
         // Reload button check (bottom right area)
         else if (tx > VW - 102 && tx < VW - 38 && ty > VH - 202 && ty < VH - 138) {
@@ -852,14 +854,31 @@ function drawCartoonBot(cx, cy, size, name, color) {
     ctx.fillText(name, cx, cy - size * 1.1);
 }
 
-function drawCartoonZombie(cx, cy, size, wasBot) {
+function drawCartoonZombie(cx, cy, size, wasBot, ztype) {
+    ztype = ztype || 'normal';
     const s = size * 0.85;
     ctx.save();
     ctx.translate(cx, cy);
 
-    // Green glow
+    // Type-specific colors
+    let skinC, bodyC, hairC, glowC, eyeC, feetC, tearC;
+    if (ztype === 'runner') {
+        skinC='#8a8a7a'; bodyC='#5a5a4a'; hairC='#4a4a3a'; glowC='rgba(180,180,150,0.08)';
+        eyeC='#ffaa00'; feetC='#6a6a5a'; tearC='#4a4a3a';
+    } else if (ztype === 'tank') {
+        skinC='#6a3322'; bodyC='#4a2215'; hairC='#2a1108'; glowC='rgba(255,80,30,0.12)';
+        eyeC='#ff4400'; feetC='#4a2a1a'; tearC='#3a1a0a';
+    } else if (ztype === 'spitter') {
+        skinC='#6a4488'; bodyC='#4a2a66'; hairC='#3a1a55'; glowC='rgba(150,80,255,0.1)';
+        eyeC='#44ff44'; feetC='#5a3a77'; tearC='#3a1a55';
+    } else {
+        skinC='#6b8f33'; bodyC='#4a5a20'; hairC='#3a4a15'; glowC='rgba(100,255,0,0.08)';
+        eyeC='#ff2200'; feetC='#5a7a30'; tearC='#3a4a15';
+    }
+
+    // Glow
     ctx.beginPath(); ctx.arc(0, 0, s + 8, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(100,255,0,0.08)'; ctx.fill();
+    ctx.fillStyle = glowC; ctx.fill();
 
     // Shadow
     ctx.beginPath();
@@ -868,35 +887,39 @@ function drawCartoonZombie(cx, cy, size, wasBot) {
 
     // Legs (torn pants)
     ctx.fillStyle = '#3a3a2a';
-    ctx.fillRect(-s*0.35, s*0.2, s*0.25, s*0.55);
-    ctx.fillRect(s*0.1, s*0.2, s*0.25, s*0.5);
+    let legW = ztype === 'tank' ? s*0.3 : s*0.25;
+    ctx.fillRect(-s*0.35, s*0.2, legW, s*0.55);
+    ctx.fillRect(s*0.1, s*0.2, legW, s*0.5);
     // Torn edges
-    ctx.fillStyle = '#2a2a1a';
+    ctx.fillStyle = tearC;
     ctx.fillRect(-s*0.3, s*0.65, s*0.15, s*0.1);
     ctx.fillRect(s*0.2, s*0.6, s*0.1, s*0.12);
     // Bare feet
-    ctx.fillStyle = '#5a7a30';
+    ctx.fillStyle = feetC;
     ctx.fillRect(-s*0.38, s*0.7, s*0.28, s*0.12);
     ctx.fillRect(s*0.08, s*0.65, s*0.28, s*0.12);
 
     // Body (tattered shirt)
-    ctx.fillStyle = '#4a5a20';
-    roundRect(ctx, -s*0.45, -s*0.35, s*0.9, s*0.6, s*0.1);
+    ctx.fillStyle = bodyC;
+    let bodyW = ztype === 'tank' ? s*1.1 : s*0.9;
+    roundRect(ctx, -bodyW/2, -s*0.35, bodyW, s*0.6, s*0.1);
     ctx.fill();
     // Tear marks
-    ctx.strokeStyle = '#3a4a15';
+    ctx.strokeStyle = tearC;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(-s*0.2, -s*0.1); ctx.lineTo(-s*0.1, s*0.15); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(s*0.15, -s*0.2); ctx.lineTo(s*0.25, s*0.1); ctx.stroke();
 
     // Arms - stretched forward (zombie pose)
-    ctx.fillStyle = '#6b8f33';
-    let wobble = Math.sin(frame * 0.06 + cx) * 0.1;
+    ctx.fillStyle = skinC;
+    let wobbleSpeed = ztype === 'runner' ? 0.12 : 0.06;
+    let wobble = Math.sin(frame * wobbleSpeed + cx) * 0.1;
+    let armW = ztype === 'tank' ? s*0.25 : s*0.18;
     // Left arm reaching forward
     ctx.save();
     ctx.translate(-s*0.5, -s*0.2);
     ctx.rotate(-0.8 + wobble);
-    ctx.fillRect(-s*0.1, 0, s*0.18, s*0.6);
+    ctx.fillRect(-s*0.1, 0, armW, s*0.6);
     ctx.beginPath(); ctx.arc(0, s*0.6, s*0.09, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
@@ -904,31 +927,38 @@ function drawCartoonZombie(cx, cy, size, wasBot) {
     ctx.save();
     ctx.translate(s*0.5, -s*0.2);
     ctx.rotate(0.8 - wobble);
-    ctx.fillRect(-s*0.08, 0, s*0.18, s*0.6);
+    ctx.fillRect(-s*0.08, 0, armW, s*0.6);
     ctx.beginPath(); ctx.arc(s*0.02, s*0.6, s*0.09, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
 
     // Head
-    ctx.beginPath(); ctx.arc(0, -s*0.6, s*0.35, 0, Math.PI*2);
-    ctx.fillStyle = '#6b8f33'; ctx.fill();
-    ctx.strokeStyle = '#3a5a10'; ctx.lineWidth = 1.5; ctx.stroke();
+    let headR = ztype === 'tank' ? s*0.4 : s*0.35;
+    ctx.beginPath(); ctx.arc(0, -s*0.6, headR, 0, Math.PI*2);
+    ctx.fillStyle = skinC; ctx.fill();
+    ctx.strokeStyle = tearC; ctx.lineWidth = 1.5; ctx.stroke();
 
     // Messy hair / wounds
-    ctx.fillStyle = '#3a4a15';
+    ctx.fillStyle = hairC;
     ctx.beginPath();
     ctx.arc(0, -s*0.75, s*0.3, Math.PI * 1.1, Math.PI * 1.9);
     ctx.fill();
     ctx.fillRect(-s*0.3, -s*0.82, s*0.15, s*0.12);
 
-    // Red glowing eyes
-    ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 8;
-    ctx.fillStyle = '#ff2200';
+    // Tank scar
+    if (ztype === 'tank') {
+        ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-s*0.2, -s*0.75); ctx.lineTo(s*0.1, -s*0.5); ctx.stroke();
+    }
+
+    // Glowing eyes
+    ctx.shadowColor = eyeC; ctx.shadowBlur = 8;
+    ctx.fillStyle = eyeC;
     ctx.beginPath(); ctx.arc(-s*0.13, -s*0.62, s*0.07, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.13, -s*0.62, s*0.07, 0, Math.PI*2); ctx.fill();
-    // Yellow pupils
+    // Pupils
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = ztype === 'spitter' ? '#aaffaa' : '#ffcc00';
     ctx.beginPath(); ctx.arc(-s*0.13, -s*0.62, s*0.03, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.13, -s*0.62, s*0.03, 0, Math.PI*2); ctx.fill();
 
@@ -943,10 +973,25 @@ function drawCartoonZombie(cx, cy, size, wasBot) {
     ctx.fillRect(s*0.02, -s*0.45, s*0.05, s*0.05);
     ctx.fillRect(-s*0.02, -s*0.45, s*0.03, s*0.07);
 
+    // Spitter drip from mouth
+    if (ztype === 'spitter') {
+        ctx.fillStyle = '#44ff44';
+        ctx.globalAlpha = 0.6 + Math.sin(frame*0.1)*0.3;
+        ctx.beginPath(); ctx.arc(0, -s*0.35, s*0.05, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(-s*0.04, -s*0.28, s*0.03, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    // Type label
+    if (ztype !== 'normal') {
+        let labelColor = ztype==='runner'?'#cccc88':ztype==='tank'?'#ff6644':'#aa66ff';
+        ctx.fillStyle = labelColor; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(ztype.toUpperCase(), 0, -s * 1.15);
+    }
     // Infected tag
     if (wasBot) {
         ctx.fillStyle = 'rgba(255,100,100,0.6)'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('INFECTED', 0, -s * 1.15);
+        ctx.fillText('INFECTED', 0, -s * (ztype !== 'normal' ? 1.3 : 1.15));
     }
 
     ctx.restore();
@@ -1004,6 +1049,31 @@ function update() {
         survivalTimer = 0; totalSeconds++; score++;
         let m = Math.floor(totalSeconds/60), s = totalSeconds%60;
         document.getElementById('time-display').innerText = m+':'+(s<10?'0':'')+s;
+    }
+
+    // Spawn special zombie types over time
+    if (!infectorMode) {
+        // Runners after 30s, every ~15s
+        if (totalSeconds >= 30 && frame % 900 === 0) {
+            let e = Math.floor(Math.random()*4), zx, zy;
+            if(e===0){zx=20;zy=Math.random()*WORLD_H;}else if(e===1){zx=WORLD_W-20;zy=Math.random()*WORLD_H;}
+            else if(e===2){zx=Math.random()*WORLD_W;zy=20;}else{zx=Math.random()*WORLD_W;zy=WORLD_H-20;}
+            zombies.push({ x:zx, y:zy, size:14, speed:6.5, hp:2, wasBot:false, ztype:'runner' });
+        }
+        // Tanks after 60s, every ~25s
+        if (totalSeconds >= 60 && frame % 1500 === 0) {
+            let e = Math.floor(Math.random()*4), zx, zy;
+            if(e===0){zx=20;zy=Math.random()*WORLD_H;}else if(e===1){zx=WORLD_W-20;zy=Math.random()*WORLD_H;}
+            else if(e===2){zx=Math.random()*WORLD_W;zy=20;}else{zx=Math.random()*WORLD_W;zy=WORLD_H-20;}
+            zombies.push({ x:zx, y:zy, size:24, speed:2.5, hp:12, wasBot:false, ztype:'tank' });
+        }
+        // Spitters after 90s, every ~20s
+        if (totalSeconds >= 90 && frame % 1200 === 0) {
+            let e = Math.floor(Math.random()*4), zx, zy;
+            if(e===0){zx=20;zy=Math.random()*WORLD_H;}else if(e===1){zx=WORLD_W-20;zy=Math.random()*WORLD_H;}
+            else if(e===2){zx=Math.random()*WORLD_W;zy=20;}else{zx=Math.random()*WORLD_W;zy=WORLD_H-20;}
+            zombies.push({ x:zx, y:zy, size:16, speed:3.5, hp:3, wasBot:false, ztype:'spitter', shootTimer:180 });
+        }
     }
 
     // Ability cooldown and active timer
@@ -1135,7 +1205,7 @@ function update() {
             let pd = Math.sqrt((player.x-bot.x)**2+(player.y-bot.y)**2);
             if (pd < player.size+bot.size) {
                 // Infect this bot
-                zombies.push({ x:bot.x, y:bot.y, size:16, speed:4.3+Math.random()*0.6, hp:2, wasBot:true });
+                zombies.push({ x:bot.x, y:bot.y, size:16, speed:4.3+Math.random()*0.6, hp:2, wasBot:true, ztype:'normal' });
                 for (let p=0;p<15;p++) particles.push({
                     x:bot.x, y:bot.y, dx:(Math.random()-0.5)*6, dy:(Math.random()-0.5)*6,
                     life:20+Math.random()*15, maxLife:35, color:'#44ff44', size:3+Math.random()*3,
@@ -1192,16 +1262,52 @@ function update() {
         pushOutOfBuildings(z);
         }
 
+        // Spitter shooting
+        if (z.ztype === 'spitter' && !z.frozen && !z.stunned) {
+            if (!z.shootTimer) z.shootTimer = 180;
+            z.shootTimer--;
+            if (z.shootTimer <= 0) {
+                z.shootTimer = 180;
+                // Shoot at nearest target
+                let stx = playerInvisible || infectorMode ? null : player;
+                let sbd = stx ? Math.sqrt((player.x-z.x)**2+(player.y-z.y)**2) : Infinity;
+                for (let bot of bots) {
+                    let d = Math.sqrt((bot.x-z.x)**2+(bot.y-z.y)**2);
+                    if (d < sbd) { sbd = d; stx = bot; }
+                }
+                if (stx && sbd < 400) {
+                    let ang = Math.atan2(stx.y-z.y, stx.x-z.x);
+                    zombieProjectiles.push({
+                        x: z.x, y: z.y, dx: Math.cos(ang)*5, dy: Math.sin(ang)*5,
+                        life: 300, size: 5,
+                    });
+                }
+            }
+        }
+
         // Infect bots
         for (let bi = bots.length-1; bi >= 0; bi--) {
             let bot = bots[bi];
             if (Math.sqrt((z.x-bot.x)**2+(z.y-bot.y)**2) < z.size+bot.size) {
-                zombies.push({ x:bot.x, y:bot.y, size:16, speed:4.3+Math.random()*0.6, hp:2, wasBot:true });
+                zombies.push({ x:bot.x, y:bot.y, size:16, speed:4.3+Math.random()*0.6, hp:2, wasBot:true, ztype:'normal' });
                 for (let p=0;p<12;p++) particles.push({
                     x:bot.x,y:bot.y, dx:(Math.random()-0.5)*5, dy:(Math.random()-0.5)*5,
                     life:18+Math.random()*12, maxLife:30, color:'#44ff44', size:3+Math.random()*2,
                 });
                 bots.splice(bi,1); score += 2;
+                // Check if all bots gone during infector mode
+                if (infectorMode && bots.length === 0) {
+                    gameActive = false;
+                    document.getElementById('end-title').innerText = 'YOU WIN!';
+                    document.getElementById('end-title').style.color = '#44ff44';
+                    document.getElementById('end-message').innerText = 'You infected everyone! The city is yours.';
+                    document.getElementById('final-score').innerText = score;
+                    document.getElementById('final-kills').innerText = kills;
+                    document.getElementById('final-survivors').innerText = 0;
+                    let m=Math.floor(totalSeconds/60),s=totalSeconds%60;
+                    document.getElementById('final-time').innerText = m+':'+(s<10?'0':'')+s;
+                    document.getElementById('game-over-screen').style.display = 'flex';
+                }
             }
         }
 
@@ -1209,7 +1315,16 @@ function update() {
         if (!infectorMode) {
             let pd = Math.sqrt((z.x-player.x)**2+(z.y-player.y)**2);
             if (pd < z.size+player.size) {
-                player.hp -= 0.5;
+                let dmg = z.ztype === 'tank' ? 1.0 : 0.5;
+                player.hp -= dmg;
+                // Tank knockback
+                if (z.ztype === 'tank' && pd > 0) {
+                    let kx = (player.x-z.x)/pd, ky = (player.y-z.y)/pd;
+                    player.x += kx * 40;
+                    player.y += ky * 40;
+                    player.x = Math.max(player.size, Math.min(WORLD_W-player.size, player.x));
+                    player.y = Math.max(player.size, Math.min(WORLD_H-player.size, player.y));
+                }
                 if (player.hp <= 0) {
                     // Enter infector mode instead of game over
                     infectorMode = true;
@@ -1273,6 +1388,27 @@ function update() {
                     }
                 }
                 break;
+            }
+        }
+    }
+
+    // Zombie projectiles (spitter)
+    for (let i = zombieProjectiles.length-1; i >= 0; i--) {
+        let zp = zombieProjectiles[i];
+        zp.x += zp.dx; zp.y += zp.dy; zp.life--;
+        if (zp.life <= 0 || zp.x < -20 || zp.x > WORLD_W+20 || zp.y < -20 || zp.y > WORLD_H+20 || collidesBuilding(zp.x,zp.y,zp.size)) {
+            zombieProjectiles.splice(i,1); continue;
+        }
+        // Hit player
+        if (!infectorMode) {
+            let pd = Math.sqrt((zp.x-player.x)**2+(zp.y-player.y)**2);
+            if (pd < player.size+zp.size) {
+                player.hp -= 8;
+                zombieProjectiles.splice(i,1);
+                for (let p=0;p<6;p++) particles.push({
+                    x:player.x, y:player.y, dx:(Math.random()-0.5)*4, dy:(Math.random()-0.5)*4,
+                    life:12+Math.random()*8, maxLife:20, color:'#88ff44', size:3+Math.random()*2,
+                });
             }
         }
     }
@@ -1492,6 +1628,17 @@ function draw() {
         ctx.beginPath(); ctx.arc(b.x-b.dx*5,b.y-b.dy*5,b.radius*0.6,0,Math.PI*2); ctx.fill();
     });
 
+    // Zombie projectiles (spitter acid)
+    zombieProjectiles.forEach(zp => {
+        ctx.beginPath(); ctx.arc(zp.x, zp.y, zp.size, 0, Math.PI*2);
+        ctx.fillStyle = '#44ff44'; ctx.fill();
+        ctx.beginPath(); ctx.arc(zp.x, zp.y, zp.size+4, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(68,255,68,0.2)'; ctx.fill();
+        // Trail
+        ctx.beginPath(); ctx.arc(zp.x-zp.dx*2, zp.y-zp.dy*2, zp.size*0.5, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(68,255,68,0.3)'; ctx.fill();
+    });
+
     // Bots
     bots.forEach(bot => {
         drawCartoonBot(bot.x, bot.y, bot.size, bot.name, bot.color);
@@ -1512,7 +1659,7 @@ function draw() {
 
     // Zombies
     zombies.forEach(z => {
-        drawCartoonZombie(z.x, z.y, z.size, z.wasBot);
+        drawCartoonZombie(z.x, z.y, z.size, z.wasBot, z.ztype);
         // Frozen effect - ice overlay
         if (z.frozen > 0) {
             ctx.globalAlpha = 0.5;
@@ -1729,7 +1876,8 @@ function drawMinimap() {
     });
     // Zombies
     zombies.forEach(z => {
-        mctx.fillStyle='#ff3333'; mctx.fillRect(z.x*sx-1.5,z.y*sy-1.5,4,4);
+        let zmc = z.ztype==='runner'?'#cccc55':z.ztype==='tank'?'#ff6633':z.ztype==='spitter'?'#aa55ff':'#ff3333';
+        mctx.fillStyle=zmc; mctx.fillRect(z.x*sx-1.5,z.y*sy-1.5,4,4);
     });
     // Player
     mctx.fillStyle = infectorMode ? '#44ff44' : '#00ff88';
