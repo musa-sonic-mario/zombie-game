@@ -1416,7 +1416,7 @@ function update() {
         if (!infectorMode) {
             let pd = Math.sqrt((zp.x-player.x)**2+(zp.y-player.y)**2);
             if (pd < player.size+zp.size) {
-                player.hp -= 8;
+                player.hp -= 2;
                 zombieProjectiles.splice(i,1);
                 for (let p=0;p<6;p++) particles.push({
                     x:player.x, y:player.y, dx:(Math.random()-0.5)*4, dy:(Math.random()-0.5)*4,
