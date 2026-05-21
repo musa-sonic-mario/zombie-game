@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { touch-action: none; overflow: hidden; }
         body {
-            background: #000;
+            background: #060a12;
             color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
@@ -1295,12 +1295,25 @@ function update() {
                     life:18+Math.random()*12, maxLife:30, color:'#44ff44', size:3+Math.random()*2,
                 });
                 bots.splice(bi,1); score += 2;
-                // Check if all bots gone during infector mode
+                // Check if all bots gone during infector mode (AI got them = you lose)
                 if (infectorMode && bots.length === 0) {
                     gameActive = false;
-                    document.getElementById('end-title').innerText = 'YOU WIN!';
-                    document.getElementById('end-title').style.color = '#44ff44';
-                    document.getElementById('end-message').innerText = 'You infected everyone! The city is yours.';
+                    document.getElementById('end-title').innerText = 'YOU LOSE';
+                    document.getElementById('end-title').style.color = '#ff3333';
+                    document.getElementById('end-message').innerText = 'The horde consumed everyone before you could.';
+                    document.getElementById('final-score').innerText = score;
+                    document.getElementById('final-kills').innerText = kills;
+                    document.getElementById('final-survivors').innerText = 0;
+                    let m=Math.floor(totalSeconds/60),s=totalSeconds%60;
+                    document.getElementById('final-time').innerText = m+':'+(s<10?'0':'')+s;
+                    document.getElementById('game-over-screen').style.display = 'flex';
+                }
+                // Also check if all bots gone during normal play (not infector)
+                if (!infectorMode && bots.length === 0 && gameActive) {
+                    gameActive = false;
+                    document.getElementById('end-title').innerText = 'YOU LOSE';
+                    document.getElementById('end-title').style.color = '#ff3333';
+                    document.getElementById('end-message').innerText = 'All survivors were infected. The city has fallen.';
                     document.getElementById('final-score').innerText = score;
                     document.getElementById('final-kills').innerText = kills;
                     document.getElementById('final-survivors').innerText = 0;
@@ -1482,8 +1495,28 @@ function update() {
 
 // ── Draw ───────────────────────────────────────────
 function draw() {
-    ctx.fillStyle = infectorMode ? '#1a0808' : '#151a10';
+    ctx.fillStyle = infectorMode ? '#1a0808' : '#0a0e18';
     ctx.fillRect(0,0,VW,VH);
+
+    // Stars (fixed on screen, not world)
+    if (!infectorMode) {
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < 80; i++) {
+            let sx = ((i*137+53)%VW), sy = ((i*89+17)%(VH*0.6));
+            let twinkle = 0.3 + Math.sin(frame*0.02 + i*1.7)*0.3;
+            ctx.globalAlpha = twinkle;
+            let starSize = (i%5===0) ? 2 : 1;
+            ctx.fillRect(sx, sy, starSize, starSize);
+        }
+        // Moon
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(VW-80, 50, 25, 0, Math.PI*2);
+        ctx.fillStyle = '#eeeedd'; ctx.fill();
+        ctx.beginPath(); ctx.arc(VW-72, 45, 22, 0, Math.PI*2);
+        ctx.fillStyle = '#0a0e18'; ctx.fill(); // crescent shadow
+        ctx.globalAlpha = 1;
+    }
+
     ctx.save();
     ctx.translate(-camX, -camY);
 
@@ -1495,7 +1528,7 @@ function draw() {
             if (infectorMode) {
                 ctx.fillStyle=h===0?'#3a1515':'#2a1010';
             } else {
-                ctx.fillStyle=h===0?'#2a3020':'#222a1a';
+                ctx.fillStyle=h===0?'#151c28':'#101822';
             }
             ctx.fillRect(gx,gy,60,60);
         }
@@ -1506,22 +1539,22 @@ function draw() {
     lakes.forEach(l => {
         ctx.beginPath();
         ctx.ellipse(l.x, l.y, l.rx, l.ry, 0, 0, Math.PI*2);
-        ctx.fillStyle = infectorMode ? 'rgba(100,20,20,0.5)' : 'rgba(20,60,100,0.5)';
+        ctx.fillStyle = infectorMode ? 'rgba(100,20,20,0.5)' : 'rgba(10,30,60,0.6)';
         ctx.fill();
-        ctx.strokeStyle = infectorMode ? 'rgba(140,40,40,0.4)' : 'rgba(40,90,140,0.4)';
+        ctx.strokeStyle = infectorMode ? 'rgba(140,40,40,0.4)' : 'rgba(20,50,90,0.4)';
         ctx.lineWidth = 2; ctx.stroke();
-        // Shimmer
+        // Shimmer / moonlight reflection
         ctx.beginPath();
         ctx.ellipse(l.x-l.rx*0.2, l.y-l.ry*0.2, l.rx*0.3, l.ry*0.25, 0, 0, Math.PI*2);
-        ctx.fillStyle = infectorMode ? 'rgba(180,60,60,0.2)' : 'rgba(60,120,180,0.2)';
+        ctx.fillStyle = infectorMode ? 'rgba(180,60,60,0.2)' : 'rgba(80,120,180,0.15)';
         ctx.fill();
     });
 
     // Roads
     roads.forEach(r => {
-        ctx.fillStyle = infectorMode ? '#2a1515' : '#222';
+        ctx.fillStyle = infectorMode ? '#2a1515' : '#1a1a22';
         ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.strokeStyle = infectorMode ? '#4a2a2a' : '#3a3a3a'; ctx.lineWidth = 1;
+        ctx.strokeStyle = infectorMode ? '#4a2a2a' : '#2a2a35'; ctx.lineWidth = 1;
         ctx.setLineDash([12,12]);
         if (r.horiz) {
             ctx.beginPath(); ctx.moveTo(r.x,r.y+r.h/2); ctx.lineTo(r.x+r.w,r.y+r.h/2); ctx.stroke();
@@ -1546,7 +1579,7 @@ function draw() {
         ctx.fillStyle='#111';
         for (let wx=b.x+8;wx<b.x+b.w-8;wx+=18) for (let wy=b.y+8;wy<b.y+b.h-8;wy+=18) {
             ctx.fillRect(wx,wy,10,10);
-            if ((wx*3+wy*7)%11<3) { ctx.fillStyle=infectorMode?'rgba(255,50,50,0.3)':'rgba(255,200,50,0.25)'; ctx.fillRect(wx,wy,10,10); ctx.fillStyle='#111'; }
+            if ((wx*3+wy*7)%11<3) { ctx.fillStyle=infectorMode?'rgba(255,50,50,0.3)':'rgba(255,220,100,0.45)'; ctx.fillRect(wx,wy,10,10); ctx.fillStyle='#111'; }
         }
     });
 
@@ -1559,12 +1592,12 @@ function draw() {
             g.addColorStop(0, t.shade>0.5?'#5a2222':'#4a1a1a');
             g.addColorStop(1, t.shade>0.5?'#2a0e0e':'#1e0808');
         } else {
-            g.addColorStop(0, t.shade>0.5?'#3a6622':'#2d5a1a');
-            g.addColorStop(1, t.shade>0.5?'#1e3a0e':'#152e08');
+            g.addColorStop(0, t.shade>0.5?'#1e3a15':'#182e10');
+            g.addColorStop(1, t.shade>0.5?'#0e1e08':'#0a1505');
         }
         ctx.fillStyle=g;
         ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = infectorMode ? '#3a1a1a' : '#5a3a1a';
+        ctx.fillStyle = infectorMode ? '#3a1a1a' : '#2a1a0e';
         ctx.fillRect(t.x-2,t.y+t.r-4,4,8);
     });
 
